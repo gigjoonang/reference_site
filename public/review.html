@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>기업사이트 제안 1차 컨펌 툴</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --panel:#ffffff; --border:#e3e5e9; --text:#1d1f24; --sub:#6b7280;
+    --accent:#111827; --accent-light:#f3f4f6; --good:#16a34a; --warn:#d97706; --bad:#dc2626;
+    --check-blue:#0B2BE0; --annot-bad:#790BE0; --annot-warn:#0B2BE0;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Malgun Gothic",sans-serif; background:var(--bg); color:var(--text); line-height:1.6; display:flex; flex-direction:column; min-height:100vh;}
+  .page-title{flex:0 0 auto;}
+  .stage{display:none; min-height:100vh;}
+  .stage.active{display:block;}
+
+  /* ===== Stage 1: 첨부 + 스캔 (좌우 배치, 한 화면) ===== */
+  #stage-intro{display:flex; align-items:center; justify-content:center; padding:24px; min-height:0; flex:1 1 auto;}
+  .intro-layout{display:flex; gap:24px; max-width:980px; width:100%; align-items:stretch;}
+  .intro-left{flex:1 1 50%; display:flex;}
+  .intro-right{flex:1 1 50%; display:flex;}
+
+  .upload-card{background:var(--panel); border:1px solid var(--border); border-radius:16px; padding:32px; width:100%; height:100%; text-align:left; display:flex; flex-direction:column; justify-content:flex-start; align-items:stretch; transition:box-shadow .2s, border-color .2s;}
+  .upload-card h2{font-size:17px; margin:0 0 6px; display:flex; align-items:center; gap:8px;}
+  .upload-card p{color:var(--sub); font-size:13px; margin:0 0 20px;}
+  .dropzone{border:1.5px dashed var(--border); border-radius:12px; padding:22px; cursor:pointer; transition:.15s; position:relative; overflow:hidden; color:var(--sub); font-size:13.5px;}
+  .dropzone.drag{border-color:var(--accent); background:var(--accent-light); color:var(--accent);}
+  .dropzone.filled{border-style:solid; border-color:var(--accent); padding:10px;}
+  .dropzone img{width:100%; border-radius:8px; display:block;}
+  .thumbs-mini{display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; justify-content:flex-start;}
+  .thumbs-mini div{width:64px; height:46px; border-radius:6px; overflow:hidden; border:1px solid var(--border);}
+  .thumbs-mini img{width:100%; height:100%; object-fit:cover; display:block;}
+  .filename{font-size:12.5px; color:var(--sub); margin-top:10px;}
+  .btn{border:none; background:var(--accent); color:#fff; padding:12px 22px; border-radius:8px; font-size:14px; cursor:pointer; font-weight:600; margin-top:20px; width:100%;}
+  .btn:disabled{opacity:.45; cursor:not-allowed;}
+  .btn.secondary{background:#fff; color:var(--accent); border:1px solid var(--accent); width:auto; margin-top:0;}
+  .btn.ghost{background:transparent; color:var(--sub); border:1px solid var(--border); width:auto; margin-top:0;}
+
+  .process-card{background:var(--panel); border:1px solid var(--border); border-radius:16px; padding:32px; width:100%; height:100%; transition:box-shadow .2s, border-color .2s;}
+  .process-card h2{font-size:17px; margin:0 0 6px; display:flex; align-items:center; gap:8px;}
+  .process-card .lead{color:var(--sub); font-size:12.8px; margin:0 0 16px;}
+  .scan-img-wrap{position:relative; border-radius:12px; overflow:hidden; border:1px solid var(--border); background:var(--bg); height:280px; margin-bottom:16px;}
+  .scan-img-wrap img{width:100%; height:100%; object-fit:cover; object-position:top center; display:block;}
+  .scan-overlay{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; background:rgba(10,12,20,.62); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); opacity:0; pointer-events:none; transition:opacity .25s ease;}
+  .scan-overlay.visible{opacity:1;}
+  .scan-spinner{width:30px; height:30px; border-radius:50%; border:3px solid rgba(255,255,255,.28); border-top-color:#fff; animation:scan-spin .8s linear infinite;}
+  .scan-overlay-text{font-size:13px; font-weight:600; color:#fff; letter-spacing:.2px;}
+  @keyframes scan-spin{ to{ transform:rotate(360deg); } }
+  .scan-placeholder{border:1.5px dashed var(--border); border-radius:12px; padding:26px 16px; text-align:left; color:var(--sub); font-size:12.8px; margin-bottom:16px;}
+  .active-step{box-shadow:0 4px 18px rgba(0,0,0,.10); border-color:var(--accent) !important;}
+  @media (max-width:760px){
+    .intro-layout{flex-direction:column;}
+  }
+  .step-list{list-style:none; margin:0; padding:0;}
+  .step-item{display:flex; align-items:center; gap:12px; padding:8px 0; opacity:.35; transition:opacity .25s;}
+  .step-item.active{opacity:1;}
+  .step-item.done{opacity:.75;}
+  .step-thumb{width:46px; height:28px; border-radius:4px; overflow:hidden; border:1px solid var(--border); flex-shrink:0; background:#eee;}
+  .step-thumb img{width:100%; height:100%; object-fit:cover; display:block;}
+  .step-info{flex:1; min-width:0;}
+  .step-name{font-size:12px; font-weight:600;}
+  .step-range{font-weight:400; color:var(--sub); font-size:11px; display:block;}
+  .step-bar{height:4px; background:#eee; border-radius:99px; margin-top:5px; overflow:hidden;}
+  .step-bar-fill{height:100%; width:0%; background:var(--accent); transition:width .5s;}
+  .step-item.active .step-bar-fill{width:100%;}
+  .step-item.done .step-bar-fill{width:100%;}
+  .step-check{width:20px; display:inline-flex; align-items:center; justify-content:center; color:var(--check-blue); opacity:0; transition:opacity .2s;}
+  .step-check svg{display:block;}
+  .step-item.done .step-check{opacity:1;}
+  .process-status{font-size:12px; color:var(--sub); margin-top:14px; text-align:left;}
+
+  /* ===== Stage 3: 리뷰 툴 ===== */
+  .wrap{max-width:980px; margin:0 auto; padding:32px 20px 80px;}
+  header.top{margin-bottom:28px;}
+  header.top h1{font-size:22px; margin:0 0 4px;}
+  header.top p{color:var(--sub); margin:0; font-size:14px;}
+  .card{background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:22px; margin-bottom:20px; transition:box-shadow .2s, border-color .2s;}
+  .card h2{font-size:16px; margin:0 0 14px; display:flex; align-items:center; gap:8px;}
+  .card h2 .num, .card-summary .num, .upload-card h2 .num, .process-card h2 .num{display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:50%; background:var(--accent); color:#fff; font-size:12px; flex-shrink:0;}
+  .card .desc{color:var(--sub); font-size:13px; margin:-8px 0 16px;}
+  .card-summary{cursor:pointer; font-size:16px; font-weight:600; display:flex; align-items:center; gap:8px; list-style:none; user-select:none;}
+  .card-summary::-webkit-details-marker{display:none;}
+  .chevron{margin-left:auto; color:var(--sub); flex-shrink:0; display:inline-flex; transition:transform .2s ease;}
+  .chevron svg{display:block;}
+  details[open] .chevron{transform:rotate(180deg);}
+  .optional-tag{font-size:11px; font-weight:500; color:var(--accent); background:var(--accent-light); padding:2px 9px; border-radius:99px;}
+  .details-body{margin-top:16px;}
+  .meta-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .field{display:flex; flex-direction:column; gap:4px;}
+  .field label{font-size:12px; color:var(--sub);}
+  .field input, .field textarea, .field select{border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:14px; font-family:inherit; background:#fff; color:var(--text);}
+  .thumbs{display:flex; flex-wrap:wrap; gap:10px; margin-top:14px;}
+  .thumb{position:relative; width:110px; height:80px; border-radius:8px; overflow:hidden; border:1px solid var(--border);}
+  .thumb img{width:100%; height:100%; object-fit:cover; display:block;}
+  .thumb button{position:absolute; top:2px; right:2px; background:rgba(0,0,0,.6); color:#fff; border:none; width:18px; height:18px; border-radius:50%; font-size:11px; cursor:pointer; line-height:1;}
+  textarea.prompt-box{width:100%; min-height:140px; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12.5px; resize:vertical;}
+  .btn-row{display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; align-items:center;}
+  .copy-ok{color:var(--good); font-size:12.5px; margin-left:6px; display:none;}
+  .cat{border-top:1px solid var(--border); padding-top:16px; margin-top:16px;}
+  .cat:first-child{border-top:none; padding-top:0; margin-top:0;}
+  .cat-title{font-weight:600; font-size:14px; margin-bottom:2px; display:flex; justify-content:space-between; align-items:center;}
+  .cat-title .cat-score{font-weight:400; font-size:12.5px; color:var(--sub);}
+  .cat-desc{color:var(--sub); font-size:12.5px; margin-bottom:10px;}
+  .item{display:flex; justify-content:space-between; align-items:center; gap:12px; padding:10px 0; border-bottom:1px dashed #eee;}
+  .item:last-child{border-bottom:none;}
+  .item-label{font-size:13.5px; flex:1;}
+  .rate{display:flex; gap:6px; flex-shrink:0;}
+  .rate button{padding:7px 14px; border-radius:6px; border:1px solid var(--border); background:#fff; cursor:pointer; font-size:12.5px; color:var(--sub); white-space:nowrap; line-height:1.3;}
+  .rate button.sel-good{background:var(--good); color:#fff; border-color:var(--good);}
+  .rate button.sel-warn{background:var(--warn); color:#fff; border-color:var(--warn);}
+  .rate button.sel-bad{background:var(--bad); color:#fff; border-color:var(--bad);}
+  .summary-bar{display:flex; align-items:center; gap:14px; margin-bottom:16px;}
+  .score-circle{width:64px; height:64px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:700; color:#fff; flex-shrink:0;}
+  .summary-text{font-size:13px; color:var(--sub);}
+  .summary-text b{color:var(--text);}
+  .flags{margin-top:6px;}
+  .flag{font-size:12.5px; color:var(--bad); margin:3px 0;}
+  .flag.warn2{color:var(--warn);}
+  .overall-text{font-size:13.5px; line-height:1.7; color:var(--text); background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:14px 16px; margin-top:6px; white-space:pre-line;}
+  #report{white-space:pre-wrap; font-size:13px; background:#fafafa; border:1px solid var(--border); border-radius:8px; padding:14px; max-height:400px; overflow:auto; font-family:ui-monospace,Menlo,Consolas,monospace; color:var(--text);}
+  footer{text-align:center; color:var(--sub); font-size:12px; margin-top:24px;}
+  @media (max-width:600px){ .meta-grid{grid-template-columns:1fr;} }
+
+  /* ===== 이미지 주석 리포트 ===== */
+  .legend{display:flex; gap:16px; margin:4px 0 14px; font-size:12.5px; color:var(--sub);}
+  .legend span{display:inline-flex; align-items:center; gap:6px;}
+  .dot{width:10px; height:10px; border-radius:50%; display:inline-block;}
+  .dot.bad{background:var(--annot-bad);}
+  .dot.warn{background:var(--annot-warn);}
+  .annot-layout{display:flex; gap:18px; align-items:flex-start;}
+  .annot-img-pane{flex:1 1 55%;}
+  .annot-img-wrap{position:relative; display:inline-block; width:100%;}
+  .annot-img-wrap img{width:100%; display:block; border-radius:8px; border:1px solid var(--border);}
+  .pin{position:absolute; transform:translate(-50%,-50%); width:24px; height:24px; border-radius:50%; border:2px solid #fff; color:#fff; font-size:12px; font-weight:700; cursor:pointer; box-shadow:0 1px 4px rgba(0,0,0,.4); z-index:2;}
+  .pin.bad{background:var(--annot-bad);}
+  .pin.warn{background:var(--annot-warn);}
+  .pin.active{outline:3px solid var(--accent); outline-offset:2px;}
+  .annot-list-pane{flex:1 1 45%;}
+  .annot-card{background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:14px; cursor:pointer; transition:transform .25s ease, box-shadow .25s ease, border-color .25s ease;}
+  .annot-card:last-child{margin-bottom:0;}
+  .annot-card.active{border-color:var(--accent); box-shadow:0 6px 16px rgba(0,0,0,.12), 0 0 0 2px var(--accent-light); transform:translateY(-4px);}
+  .annot-card-head{display:flex; align-items:center; gap:8px; margin-bottom:5px;}
+  .annot-badge{width:20px; height:20px; border-radius:50%; color:#fff; font-size:11px; font-weight:700; display:inline-flex; align-items:center; justify-content:center;}
+  .annot-badge.bad{background:var(--annot-bad);}
+  .annot-badge.warn{background:var(--annot-warn);}
+  .annot-level{font-size:11px; font-weight:600; padding:2px 8px; border-radius:99px;}
+  .annot-level.bad{background:#f2e5fc; color:var(--annot-bad);}
+  .annot-level.warn{background:#e0e4fb; color:var(--annot-warn);}
+  .annot-card-title{font-size:13.5px; font-weight:600; margin-bottom:3px;}
+  .annot-card-desc{font-size:12.5px; color:var(--sub); line-height:1.5;}
+  @media (max-width:760px){
+    .annot-layout{flex-direction:column;}
+    .annot-img-pane{position:relative; top:0;}
+  }
+  .page-title{padding:28px 24px 4px; text-align:center;}
+  .page-title-logo{height:28px; width:auto; display:inline-block;}
+  .site-nav{display:flex; justify-content:center; gap:8px; padding:14px 24px 4px; flex-wrap:wrap;}
+  .site-nav-tab{font-size:13px; font-weight:600; padding:8px 18px; border-radius:99px; border:1px solid var(--border); color:var(--sub); text-decoration:none; background:#fff; transition:.15s;}
+  .site-nav-tab:hover{border-color:var(--accent); color:var(--accent);}
+  .site-nav-tab.active{background:var(--accent); color:#fff; border-color:var(--accent);}
+  .page-title h1{font-size:30px; font-weight:800; margin:0; letter-spacing:-.01em;}
+</style>
+</head>
+<body>
+
+<header class="page-title"><img src="data:image/png;base64,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" alt="기업사이트 제안 1차 컨펌" class="page-title-logo"></header>
+<nav class="site-nav">
+  <a href="index.html" class="site-nav-tab">레퍼런스 찾기</a>
+  <a href="review.html" class="site-nav-tab active">1차 컨펌 리뷰</a>
+</nav>
+
+<!-- STAGE 1: 첨부(좌) + 스캔(우) 한 화면 -->
+<div class="stage active" id="stage-intro">
+  <div class="intro-layout">
+    <div class="intro-left">
+      <div class="upload-card active-step" id="uploadCard">
+        <h2><span class="num">1</span> 분석 시작하기</h2>
+        <p>검토할 시안 스크린샷을 첨부하면 오른쪽에서 스캔 과정을 확인할 수 있습니다.</p>
+        <div class="dropzone" id="dropzone">이미지를 드래그하거나 클릭해서 업로드<br>(또는 캡처 후 Ctrl+V / Cmd+V)</div>
+        <input type="file" id="fileInput" accept="image/*" multiple style="display:none;">
+        <div class="thumbs-mini" id="thumbsMini"></div>
+        <div class="filename" id="filename"></div>
+        <button class="btn" id="startBtn" disabled>분석 시작하기</button>
+      </div>
+    </div>
+    <div class="intro-right">
+      <div class="process-card" id="processCard">
+        <h2><span class="num">2</span> 이미지 스캔</h2>
+        <p class="lead" id="scanLead">이미지를 첨부하고 '분석 시작하기'를 누르면 여기서 스캔 과정을 확인할 수 있습니다.</p>
+        <div class="scan-placeholder" id="scanPlaceholder">대기 중</div>
+        <div class="scan-img-wrap" id="scanImgWrap" style="display:none;">
+          <img id="scanPreviewImg" src="" alt="스캔 중인 이미지">
+          <div class="scan-overlay" id="scanOverlay">
+            <div class="scan-spinner"></div>
+            <div class="scan-overlay-text">스캔 중입니다...</div>
+          </div>
+        </div>
+        <ul class="step-list" id="stepList"></ul>
+        <div class="process-status" id="processStatus"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- STAGE 3: 리뷰 툴 -->
+<div class="stage" id="stage-review">
+  <div class="wrap">
+    <header class="top">
+      <p>컨펌자에게 넘기기 전, AI 초안을 스스로 점검하고 피드백을 받아보세요.</p>
+    </header>
+
+    <section class="card">
+      <h2><span class="num">1</span> 제안 결과물</h2>
+      <p class="desc">앞에서 첨부한 이미지가 여기 표시됩니다. 필요하면 더 추가하거나 뺄 수 있습니다.</p>
+      <div class="dropzone" id="dropzone2">이미지를 드래그하거나 클릭해서 추가 업로드</div>
+      <input type="file" id="fileInput2" accept="image/*" multiple style="display:none;">
+      <div class="thumbs" id="thumbs"></div>
+    </section>
+
+    <section class="card">
+      <h2><span class="num">2</span> AI 피드백 받기</h2>
+      <p class="desc">아래 버튼으로 검토 프롬프트를 생성 &rarr; Claude 대화창에 업로드한 이미지와 함께 붙여넣기 &rarr; 받은 답변을 아래 칸에 붙여넣으면(붙여넣고 칸 밖을 클릭하면) 이미지 주석 리포트가 자동으로 생성됩니다.</p>
+      <div class="btn-row">
+        <button class="btn secondary" id="genPromptBtn">검토 프롬프트 생성</button>
+        <button class="btn secondary" id="copyPromptBtn" disabled>복사하기</button>
+        <span class="copy-ok" id="copyOk">복사됨 ✓</span>
+      </div>
+      <textarea class="prompt-box" id="promptBox" style="margin-top:12px; display:none;" readonly></textarea>
+      <div class="field" style="margin-top:14px;">
+        <label>AI 피드백 붙여넣기</label>
+        <textarea id="aiFeedback" style="min-height:120px;" placeholder="Claude에게 받은 피드백 응답을 여기에 붙여넣으세요 (선택 사항)"></textarea>
+      </div>
+      <div class="btn-row">
+        <button class="btn secondary" id="parseAnnotBtn">이미지 주석 리포트 생성</button>
+        <span id="annotStatus" style="font-size:12.5px; color:var(--sub);"></span>
+      </div>
+    </section>
+
+    <section class="card" id="annotSection" style="display:none;">
+      <h2><span class="num">3</span> 이미지 주석 리포트</h2>
+      <p class="desc">AI 피드백에 포함된 위치 태그를 이미지 위에 번호로 표시합니다. 번호를 클릭하면 오른쪽 설명이, 설명을 클릭하면 이미지 위 번호가 강조됩니다.</p>
+      <div class="legend">
+        <span><span class="dot bad"></span> 미흡</span>
+        <span><span class="dot warn"></span> 보완 필요</span>
+      </div>
+      <div class="annot-layout">
+        <div class="annot-img-pane">
+          <div class="annot-img-wrap" id="annotImgWrap"></div>
+        </div>
+        <div class="annot-list-pane" id="annotListPane"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <details id="checklistDetails">
+        <summary class="card-summary"><span class="num">4</span> 자가 체크리스트 <span class="optional-tag">선택사항 · 펼쳐서 진행</span><span class="chevron"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span></summary>
+        <div class="details-body">
+          <p class="desc">항목별로 상태를 선택하세요. <b style="color:var(--good)">양호</b> / <b style="color:var(--warn)">보완필요</b> / <b style="color:var(--bad)">미흡</b> · 코멘트는 선택 입력입니다.</p>
+          <div id="checklist"></div>
+        </div>
+      </details>
+    </section>
+
+    <section class="card">
+      <h2><span class="num">5</span> 종합 의견</h2>
+      <p class="desc">자가 체크리스트를 체크하면 아래 결과와 의견이 자동으로 갱신됩니다.</p>
+      <div class="summary-bar" id="summaryBar"></div>
+      <div class="flags" id="flags"></div>
+      <div class="overall-text" id="overallText"></div>
+      <div class="btn-row" style="margin-top:16px;">
+        <button class="btn ghost" id="resetBtn">전체 초기화</button>
+      </div>
+    </section>
+
+    <footer>체크리스트 입력 내용은 자동 저장됩니다 (업로드한 이미지는 용량 문제로 다시 열 때 재첨부가 필요합니다).</footer>
+  </div>
+</div>
+
+<script>
+/* ========== 공통: 카테고리 정의 ========== */
+const CATEGORIES = [
+  { key:"brand", title:"브랜드 일관성", desc:"로고, 컬러, 폰트, 톤앤매너가 브랜드 가이드와 맞는가",
+    items:["로고/심볼 사용이 정확한가","브랜드 컬러 팔레트를 준수했는가","폰트/타이포그래피가 가이드와 일치하는가","전체 톤앤매너가 기업 이미지에 부합하는가"] },
+  { key:"content", title:"정보구조 & 콘텐츠", desc:"핵심 메시지 전달력과 콘텐츠 완성도",
+    items:["핵심 메시지가 첫 화면에서 명확히 전달되는가","정보 계층구조(제목/본문/CTA)가 논리적인가","카피에 오탈자·비문·placeholder 텍스트가 없는가","필수 섹션(회사소개/제품·서비스/연락처 등)이 누락 없는가"] },
+  { key:"ux", title:"UX / 사용성", desc:"탐색 흐름과 행동 유도",
+    items:["내비게이션 구조가 직관적인가","CTA(문의/구매 등) 위치와 문구가 명확한가","사용자가 원하는 정보에 최소 클릭으로 도달 가능한가"] },
+  { key:"visual", title:"비주얼 디자인", desc:"레이아웃과 시각적 완성도",
+    items:["레이아웃 균형과 여백이 안정적인가","이미지/아이콘 퀄리티와 스타일이 통일되어 있는가","섹션 간 시각적 리듬(강약)이 자연스러운가"] },
+  { key:"responsive", title:"반응형 / 접근성", desc:"다양한 환경에서의 사용성",
+    items:["모바일 레이아웃 대응이 확인되었는가(별도 시안 필요 여부 포함)","텍스트-배경 명도 대비가 충분한가","글자 크기와 가독성이 적절한가"] },
+  { key:"tech", title:"기술 · 구현 고려사항", desc:"실제 개발 전환 시 리스크",
+    items:["실제 구현 가능한 레이아웃/컴포넌트인가(과도한 특수 효과 없음)","에셋(이미지/아이콘) 해상도와 포맷이 실사용에 적합한가","로딩이 필요한 요소(폼, 지도 등)가 현실적으로 배치되었는가"] },
+  { key:"biz", title:"비즈니스 목표 부합", desc:"타겟과 전환 목표에 맞는가",
+    items:["타겟 고객층의 니즈/기대에 부합하는 구성인가","전환 목표(문의, 구매, 가입 등)가 시안에 반영되었는가","경쟁사 대비 차별화 포인트가 드러나는가"] }
+];
+const RATINGS = [
+  {v:"good", label:"양호", cls:"sel-good"},
+  {v:"warn", label:"보완", cls:"sel-warn"},
+  {v:"bad",  label:"미흡", cls:"sel-bad"}
+];
+const NUM_STEPS = 8;
+
+/* ========== 상태 ========== */
+const STORAGE_KEY = "site_review_tool_template_v1";
+let state = {
+  meta:{ project:"", worker:"", date:"", confirmer:"" },
+  images: [],
+  aiFeedback: "",
+  checks: {}
+};
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      state = Object.assign(state, parsed);
+      if(!state.images) state.images = [];
+    }
+  }catch(e){}
+}
+function saveState(){
+  try{
+    const { images, ...rest } = state;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(rest));
+  }catch(e){
+    console.warn("저장 실패(용량 초과 가능):", e);
+  }
+}
+
+/* ========== STAGE 전환 ========== */
+function showStage(id){
+  document.querySelectorAll('.stage').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+/* ========== STAGE 1: 첨부 ========== */
+const dropzone = document.getElementById("dropzone");
+const fileInput = document.getElementById("fileInput");
+const thumbsMini = document.getElementById("thumbsMini");
+const startBtn = document.getElementById("startBtn");
+const filenameEl = document.getElementById("filename");
+
+function renderThumbsMini(){
+  thumbsMini.innerHTML = "";
+  state.images.forEach(src=>{
+    const d = document.createElement("div");
+    d.innerHTML = `<img src="${src}">`;
+    thumbsMini.appendChild(d);
+  });
+  filenameEl.textContent = state.images.length ? `${state.images.length}개 이미지 첨부됨` : "";
+  startBtn.disabled = state.images.length === 0;
+}
+
+function handleFilesStage1(files){
+  const readers = [...files].filter(f=>f.type.startsWith("image/"));
+  readers.forEach(f=>{
+    const reader = new FileReader();
+    reader.onload = e=>{ state.images.push(e.target.result); renderThumbsMini(); renderThumbs(); };
+    reader.readAsDataURL(f);
+  });
+}
+dropzone.onclick = ()=> fileInput.click();
+fileInput.onchange = e=> handleFilesStage1(e.target.files);
+["dragenter","dragover"].forEach(ev=> dropzone.addEventListener(ev, e=>{ e.preventDefault(); dropzone.classList.add("drag"); }));
+["dragleave","drop"].forEach(ev=> dropzone.addEventListener(ev, e=>{ e.preventDefault(); dropzone.classList.remove("drag"); }));
+dropzone.addEventListener("drop", e=>{ handleFilesStage1(e.dataTransfer.files); });
+window.addEventListener("paste", e=>{
+  const items = e.clipboardData?.items;
+  if(!items) return;
+  const files = [];
+  for(const item of items){
+    if(item.type && item.type.startsWith("image/")){
+      const f = item.getAsFile();
+      if(f) files.push(f);
+    }
+  }
+  if(files.length) handleFilesStage1(files);
+});
+
+startBtn.onclick = ()=>{
+  startBtn.disabled = true;
+  startBtn.textContent = "분석 중…";
+  document.getElementById("scanPlaceholder").style.display = "none";
+  document.getElementById("scanLead").textContent = "첨부한 시안을 위에서 아래로 8개 구간으로 나눠 순서대로 확인하고 있습니다.";
+  document.getElementById("uploadCard").classList.remove("active-step");
+  document.getElementById("processCard").classList.add("active-step");
+  runSliceAnimation(state.images[0]);
+};
+
+/* ========== 실제 업로드 이미지를 캔버스로 분할해 스캔 애니메이션 ========== */
+function sliceImageIntoSteps(dataUrl, numSteps, callback){
+  const img = new Image();
+  img.onload = ()=>{
+    const targetWidth = 900;
+    const scale = targetWidth / img.width;
+    const targetHeight = Math.max(1, Math.round(img.height * scale));
+    const stepHeight = Math.ceil(targetHeight / numSteps);
+    const full = document.createElement("canvas");
+    full.width = targetWidth; full.height = targetHeight;
+    full.getContext("2d").drawImage(img, 0, 0, targetWidth, targetHeight);
+
+    const steps = [];
+    for(let i=0;i<numSteps;i++){
+      const y = i*stepHeight;
+      const h = Math.min(stepHeight, targetHeight - y);
+      if(h <= 0) break;
+      const c = document.createElement("canvas");
+      c.width = targetWidth; c.height = h;
+      c.getContext("2d").drawImage(full, 0, y, targetWidth, h, 0, 0, targetWidth, h);
+      steps.push({
+        dataUrl: c.toDataURL("image/jpeg", 0.8),
+        range: `${(y/targetHeight*100).toFixed(1)}% – ${((y+h)/targetHeight*100).toFixed(1)}%`
+      });
+    }
+    callback(steps);
+  };
+  img.onerror = ()=> callback([]);
+  img.src = dataUrl;
+}
+
+function buildStepListDOM(steps){
+  const list = document.getElementById("stepList");
+  list.innerHTML = "";
+  steps.forEach((s, i)=>{
+    const li = document.createElement("li");
+    li.className = "step-item";
+    li.id = "step-"+i;
+    li.innerHTML = `
+      <div class="step-thumb"><img src="${s.dataUrl}"></div>
+      <div class="step-info">
+        <div class="step-name">STEP ${i+1}/${steps.length} <span class="step-range">전체 높이 기준 ${s.range}</span></div>
+        <div class="step-bar"><div class="step-bar-fill"></div></div>
+      </div>
+      <div class="step-check"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 9 18 20 6"></polyline></svg></div>`;
+    list.appendChild(li);
+  });
+}
+
+function runSliceAnimation(imageDataUrl){
+  const status = document.getElementById("processStatus");
+  const previewImg = document.getElementById("scanPreviewImg");
+  const overlay = document.getElementById("scanOverlay");
+  const overlayText = overlay ? overlay.querySelector(".scan-overlay-text") : null;
+  if(!imageDataUrl){
+    status.textContent = "이미지를 불러오지 못했습니다 — 리뷰 툴로 이동합니다.";
+    setTimeout(()=> enterReviewStage(), 800);
+    return;
+  }
+  document.getElementById("scanImgWrap").style.display = "block";
+  previewImg.src = imageDataUrl;
+  if(overlay) overlay.classList.add("visible");
+  if(overlayText) overlayText.textContent = "스캔 중입니다...";
+  status.textContent = "이미지를 나누는 중…";
+  sliceImageIntoSteps(imageDataUrl, NUM_STEPS, steps=>{
+    if(steps.length === 0){
+      status.textContent = "분석 실패 — 리뷰 툴로 이동합니다.";
+      if(overlay) overlay.classList.remove("visible");
+      setTimeout(()=> enterReviewStage(), 800);
+      return;
+    }
+    buildStepListDOM(steps);
+    const items = document.querySelectorAll(".step-item");
+    let i = 0;
+    function next(){
+      if(i > 0) items[i-1].classList.remove("active");
+      if(i >= items.length){
+        status.textContent = "스캔 완료 — 리뷰 툴로 이동합니다";
+        if(overlayText) overlayText.textContent = "스캔 완료";
+        if(overlay) overlay.classList.remove("visible");
+        setTimeout(()=> enterReviewStage(), 700);
+        return;
+      }
+      items[i].classList.add("active");
+      if(overlayText) overlayText.textContent = `스캔 중입니다... (${i+1}/${items.length})`;
+      status.textContent = `STEP ${i+1}/${items.length} 확인 중…`;
+      setTimeout(()=>{
+        items[i].classList.remove("active");
+        items[i].classList.add("done");
+        i++;
+        next();
+      }, 500);
+    }
+    next();
+  });
+}
+
+function enterReviewStage(){
+  document.getElementById("uploadCard").classList.remove("active-step");
+  document.getElementById("processCard").classList.remove("active-step");
+  showStage("stage-review");
+  window.scrollTo(0,0);
+  initReview();
+}
+
+/* ========== STAGE 3: 리뷰 툴 (체크리스트 / AI 피드백 / 리포트) ========== */
+function buildChecklistDOM(){
+  const root = document.getElementById("checklist");
+  root.innerHTML = "";
+  CATEGORIES.forEach(cat=>{
+    const catDiv = document.createElement("div");
+    catDiv.className = "cat";
+    const titleRow = document.createElement("div");
+    titleRow.className = "cat-title";
+    titleRow.innerHTML = `<span>${cat.title}</span><span class="cat-score" id="score_${cat.key}"></span>`;
+    catDiv.appendChild(titleRow);
+    const descEl = document.createElement("div");
+    descEl.className = "cat-desc";
+    descEl.textContent = cat.desc;
+    catDiv.appendChild(descEl);
+
+    cat.items.forEach((label, idx)=>{
+      const id = `${cat.key}_${idx}`;
+      if(!state.checks[id]) state.checks[id] = { rating:null };
+
+      const item = document.createElement("div");
+      item.className = "item";
+      const labelEl = document.createElement("div");
+      labelEl.className = "item-label";
+      labelEl.textContent = label;
+      item.appendChild(labelEl);
+
+      const rateWrap = document.createElement("div");
+      rateWrap.className = "rate";
+      RATINGS.forEach(r=>{
+        const b = document.createElement("button");
+        b.textContent = r.label;
+        b.type = "button";
+        b.onclick = ()=>{
+          state.checks[id].rating = state.checks[id].rating === r.v ? null : r.v;
+          saveState(); renderChecklistState(); renderSummary(); renderOverallText();
+        };
+        b.dataset.id = id; b.dataset.v = r.v; b.dataset.cls = r.cls;
+        rateWrap.appendChild(b);
+      });
+      item.appendChild(rateWrap);
+
+      catDiv.appendChild(item);
+    });
+    root.appendChild(catDiv);
+  });
+  renderChecklistState();
+}
+
+function renderChecklistState(){
+  document.querySelectorAll(".rate button").forEach(b=>{
+    const id = b.dataset.id, v = b.dataset.v, cls = b.dataset.cls;
+    b.classList.remove("sel-good","sel-warn","sel-bad");
+    if(state.checks[id] && state.checks[id].rating === v){
+      b.classList.add(cls);
+    }
+  });
+  CATEGORIES.forEach(cat=>{
+    const ratings = cat.items.map((_,idx)=> state.checks[`${cat.key}_${idx}`]?.rating).filter(Boolean);
+    const el = document.getElementById(`score_${cat.key}`);
+    if(!el) return;
+    if(ratings.length === 0){ el.textContent = "미평가"; return; }
+    el.textContent = `${ratings.length}/${cat.items.length} 평가됨`;
+  });
+}
+
+function scoreValue(r){ return r === "good" ? 100 : r === "warn" ? 55 : r === "bad" ? 10 : null; }
+
+function computeOverall(){
+  let vals = [];
+  let flags = [];
+  let counts = { good:0, warn:0, bad:0 };
+  CATEGORIES.forEach(cat=>{
+    cat.items.forEach((label, idx)=>{
+      const c = state.checks[`${cat.key}_${idx}`];
+      if(c && c.rating){
+        vals.push(scoreValue(c.rating));
+        counts[c.rating] = (counts[c.rating]||0) + 1;
+        if(c.rating === "bad") flags.push({level:"bad", text:`[${cat.title}] ${label}`});
+        if(c.rating === "warn") flags.push({level:"warn", text:`[${cat.title}] ${label}`});
+      }
+    });
+  });
+  const avg = vals.length ? Math.round(vals.reduce((a,b)=>a+b,0)/vals.length) : null;
+  const totalItems = CATEGORIES.reduce((a,c)=>a+c.items.length,0);
+  return { avg, evaluated: vals.length, total: totalItems, flags, counts };
+}
+
+function renderOverallText(){
+  const { avg, evaluated, total, flags, counts } = computeOverall();
+  const box = document.getElementById("overallText");
+  if(!box) return;
+
+  if(evaluated === 0){
+    box.textContent = "아직 체크리스트를 평가하지 않았습니다. 위 자가 체크리스트 항목을 하나씩 평가하면 이곳에 종합 결과와 의견이 자동으로 표시됩니다.";
+    return;
+  }
+
+  const remain = total - evaluated;
+  let lines = [];
+  lines.push(`체크리스트 ${total}개 항목 중 ${evaluated}개 평가 완료 (양호 ${counts.good||0} · 보완필요 ${counts.warn||0} · 미흡 ${counts.bad||0}${remain>0 ? ` · 미평가 ${remain}` : ""}), 종합 점수 ${avg}/100.`);
+  lines.push("");
+
+  if((counts.bad||0) > 0){
+    lines.push(`미흡으로 표시된 ${counts.bad}개 항목은 컨펌 요청 전 반드시 수정이 필요합니다. 아래 '주의가 필요한 항목' 목록을 참고해 우선적으로 보완하세요.`);
+  }
+  if((counts.warn||0) > 0){
+    lines.push(`보완필요 ${counts.warn}개 항목은 필수는 아니지만, 완성도를 높이려면 함께 확인하는 것을 권장합니다.`);
+  }
+  if(remain > 0){
+    lines.push(`아직 평가하지 않은 항목이 ${remain}개 있습니다. 전체 항목을 평가해야 정확한 종합 의견을 확인할 수 있습니다.`);
+  }
+
+  lines.push("");
+  if(remain > 0){
+    lines.push("→ 남은 항목을 마저 평가해 주세요.");
+  } else if(avg >= 80 && (counts.bad||0) === 0){
+    lines.push("→ 전반적으로 양호합니다. 컨펌 요청이 가능한 수준입니다.");
+  } else if(avg >= 50){
+    lines.push("→ 보완이 필요한 부분을 수정한 뒤 컨펌을 요청하는 것을 권장합니다.");
+  } else {
+    lines.push("→ 미흡한 항목이 많습니다. 재작업 후 다시 검토하는 것을 권장합니다.");
+  }
+
+  box.textContent = lines.join("\n");
+}
+
+function renderSummary(){
+  const { avg, evaluated, total, flags } = computeOverall();
+  const bar = document.getElementById("summaryBar");
+  const color = avg === null ? "#9ca3af" : avg >= 80 ? "var(--good)" : avg >= 50 ? "var(--warn)" : "var(--bad)";
+  bar.innerHTML = `
+    <div class="score-circle" style="background:${color}">${avg === null ? "-" : avg}</div>
+    <div class="summary-text">
+      <b>${evaluated}/${total}</b> 항목 평가 완료<br>
+      ${avg === null ? "아직 평가된 항목이 없습니다." : avg >= 80 ? "전반적으로 양호 — 컨펌 요청 가능한 수준입니다." : avg >= 50 ? "일부 보완이 필요합니다." : "미흡한 항목이 많습니다. 컨펌 전 재작업을 권장합니다."}
+    </div>`;
+  const flagsEl = document.getElementById("flags");
+  if(flags.length === 0){ flagsEl.innerHTML = ""; return; }
+  flagsEl.innerHTML = "<div style='font-size:12.5px;color:var(--sub);margin-bottom:4px;'>주의가 필요한 항목</div>" +
+    flags.map(f=>`<div class="flag ${f.level==='warn'?'warn2':''}">${f.level==='bad'?'● 미흡':'▲ 보완'} · ${f.text}</div>`).join("");
+}
+
+/* 리뷰 단계용 이미지 업로드(추가) */
+const dropzone2 = document.getElementById("dropzone2");
+const fileInput2 = document.getElementById("fileInput2");
+const thumbsEl = document.getElementById("thumbs");
+
+function renderThumbs(){
+  thumbsEl.innerHTML = "";
+  state.images.forEach((src, i)=>{
+    const t = document.createElement("div");
+    t.className = "thumb";
+    t.innerHTML = `<img src="${src}"><button data-i="${i}">✕</button>`;
+    t.querySelector("button").onclick = ()=>{ state.images.splice(i,1); renderThumbs(); renderThumbsMini(); };
+    thumbsEl.appendChild(t);
+  });
+}
+function handleFilesStage3(files){
+  [...files].forEach(f=>{
+    if(!f.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = e=>{ state.images.push(e.target.result); renderThumbs(); renderThumbsMini(); };
+    reader.readAsDataURL(f);
+  });
+}
+dropzone2.onclick = ()=> fileInput2.click();
+fileInput2.onchange = e=> handleFilesStage3(e.target.files);
+["dragenter","dragover"].forEach(ev=> dropzone2.addEventListener(ev, e=>{ e.preventDefault(); dropzone2.classList.add("drag"); }));
+["dragleave","drop"].forEach(ev=> dropzone2.addEventListener(ev, e=>{ e.preventDefault(); dropzone2.classList.remove("drag"); }));
+dropzone2.addEventListener("drop", e=>{ handleFilesStage3(e.dataTransfer.files); });
+
+
+/* AI 프롬프트 */
+function buildCriteriaPrompt(){
+  const criteriaText = CATEGORIES.map(c=> `- ${c.title}: ${c.items.join(" / ")}`).join("\n");
+  return `아래는 AI로 생성한 기업사이트 제안 시안 이미지입니다. 다음 기준으로 냉정하게 검토하고, 카테고리별로 잘된 점과 개선이 필요한 점을 구체적으로 지적해주세요. 특히 "미흡" 수준의 문제는 왜 문제인지와 함께 짚어주세요.
+
+[검토 기준]
+${criteriaText}
+
+[요청 형식]
+1) 카테고리별 한줄평
+2) 반드시 수정이 필요한 항목 (우선순위 순)
+3) 컨펌자에게 보고하기 전에 확인하면 좋을 질문 리스트
+4) 위 1)~3)에서 언급한 문제들 중 이미지 위에 위치를 표시할 수 있는 항목을, 아래 형식 그대로 별도 블록으로 추가해주세요. 이 블록은 도구가 자동으로 파싱하니 형식을 반드시 지켜주세요.
+   - top/left는 이미지 전체 기준 위에서부터, 왼쪽에서부터의 위치를 0~100 사이 백분율로 추정한 값입니다.
+   - level은 bad(반드시 수정) 또는 warn(보완 필요) 중 하나입니다.
+
+---ANNOTATIONS---
+MARK: top=0.0 left=50 level=bad | 제목 | 설명
+MARK: top=0.0 left=50 level=warn | 제목 | 설명
+(문제 항목 수만큼 반복)
+---END---`;
+}
+
+/* ========== 이미지 주석 리포트: MARK 태그 파싱 & 렌더 ========== */
+function parseAnnotations(text){
+  if(!text) return [];
+  const results = [];
+  const re = /MARK:\s*top=([\d.]+)\s+left=([\d.]+)\s+level=(bad|warn)\s*\|\s*([^|]+)\|\s*([^\n\r]+)/g;
+  let m;
+  while((m = re.exec(text)) !== null){
+    results.push({
+      top: parseFloat(m[1]),
+      left: parseFloat(m[2]),
+      level: m[3],
+      title: m[4].trim(),
+      desc: m[5].trim()
+    });
+  }
+  return results;
+}
+
+function renderAnnotations(items){
+  const section = document.getElementById("annotSection");
+  const imgWrap = document.getElementById("annotImgWrap");
+  const listPane = document.getElementById("annotListPane");
+  const status = document.getElementById("annotStatus");
+
+  if(items.length === 0 || state.images.length === 0){
+    section.style.display = "none";
+    status.textContent = items.length === 0
+      ? "AI 피드백에서 위치 태그(MARK:)를 찾지 못했습니다. '검토 프롬프트 생성'으로 만든 프롬프트를 사용했는지 확인해주세요."
+      : "이미지를 먼저 첨부해주세요.";
+    return;
+  }
+
+  imgWrap.innerHTML = `<img src="${state.images[0]}" alt="검토 이미지">` +
+    items.map((it,i)=> `<button class="pin ${it.level}" style="top:${it.top}%; left:${it.left}%;" data-n="${i}" title="${i+1}. ${it.title}">${i+1}</button>`).join("");
+
+  listPane.innerHTML = items.map((it,i)=>{
+    const levelLabel = it.level === "bad" ? "미흡" : "보완필요";
+    return `<div class="annot-card" id="annot-card-${i}" data-n="${i}">
+      <div class="annot-card-head"><span class="annot-badge ${it.level}">${i+1}</span><span class="annot-level ${it.level}">${levelLabel}</span></div>
+      <div class="annot-card-title">${it.title}</div>
+      <div class="annot-card-desc">${it.desc}</div>
+    </div>`;
+  }).join("");
+
+  imgWrap.querySelectorAll(".pin").forEach(pin=>{
+    pin.addEventListener("click", ()=>{
+      const n = pin.dataset.n;
+      imgWrap.querySelectorAll(".pin").forEach(p=>p.classList.remove("active"));
+      listPane.querySelectorAll(".annot-card").forEach(c=>c.classList.remove("active"));
+      pin.classList.add("active");
+      const card = document.getElementById("annot-card-"+n);
+      if(card){ card.classList.add("active"); card.scrollIntoView({behavior:"smooth", block:"center"}); }
+    });
+  });
+  listPane.querySelectorAll(".annot-card").forEach(card=>{
+    card.addEventListener("click", ()=>{
+      const n = card.dataset.n;
+      imgWrap.querySelectorAll(".pin").forEach(p=>p.classList.remove("active"));
+      listPane.querySelectorAll(".annot-card").forEach(c=>c.classList.remove("active"));
+      card.classList.add("active");
+      const pin = imgWrap.querySelector('.pin[data-n="'+n+'"]');
+      if(pin) pin.classList.add("active");
+    });
+  });
+
+  section.style.display = "block";
+  status.textContent = `${items.length}개 위치 표시 완료 ✓`;
+  setupScrollSpy();
+  setupAnnotScrollSpy();
+}
+
+let annotScrollSpyObserver = null;
+function setupAnnotScrollSpy(){
+  if(annotScrollSpyObserver) annotScrollSpyObserver.disconnect();
+  const imgWrap = document.getElementById("annotImgWrap");
+  const cards = document.querySelectorAll("#annotListPane .annot-card");
+  if(!cards.length) return;
+  annotScrollSpyObserver = new IntersectionObserver((entries)=>{
+    entries.forEach(entry=>{
+      if(entry.isIntersecting){
+        const n = entry.target.dataset.n;
+        cards.forEach(c=> c.classList.remove("active"));
+        imgWrap.querySelectorAll(".pin").forEach(p=> p.classList.remove("active"));
+        entry.target.classList.add("active");
+        const pin = imgWrap.querySelector('.pin[data-n="'+n+'"]');
+        if(pin) pin.classList.add("active");
+      }
+    });
+  }, { root:null, rootMargin:"-40% 0px -40% 0px", threshold:0 });
+  cards.forEach(c=> annotScrollSpyObserver.observe(c));
+}
+
+function runAnnotationParse(){
+  const text = document.getElementById("aiFeedback").value;
+  const items = parseAnnotations(text);
+  renderAnnotations(items);
+}
+
+function bindAIFeedback(){
+  document.getElementById("aiFeedback").value = state.aiFeedback || "";
+  document.getElementById("aiFeedback").oninput = e=>{ state.aiFeedback = e.target.value; saveState(); };
+  document.getElementById("aiFeedback").addEventListener("change", runAnnotationParse);
+  document.getElementById("aiFeedback").addEventListener("paste", ()=> setTimeout(runAnnotationParse, 50));
+  document.getElementById("parseAnnotBtn").onclick = runAnnotationParse;
+  if(state.aiFeedback) runAnnotationParse();
+
+  document.getElementById("genPromptBtn").onclick = ()=>{
+    document.getElementById("promptBox").value = buildCriteriaPrompt();
+    document.getElementById("promptBox").style.display = "block";
+    document.getElementById("copyPromptBtn").disabled = false;
+  };
+  document.getElementById("copyPromptBtn").onclick = ()=>{
+    const box = document.getElementById("promptBox");
+    box.select();
+    navigator.clipboard.writeText(box.value).then(()=>{
+      const ok = document.getElementById("copyOk");
+      ok.style.display = "inline"; setTimeout(()=> ok.style.display="none", 1500);
+    });
+  };
+}
+
+function bindResetButton(){
+  document.getElementById("resetBtn").onclick = ()=>{
+    if(!confirm("모든 입력 내용을 초기화하고 처음 화면으로 돌아갈까요?")) return;
+    localStorage.removeItem(STORAGE_KEY);
+    state = { meta:{project:"",worker:"",date:"",confirmer:""}, images:[], aiFeedback:"", checks:{} };
+    renderThumbsMini();
+    document.getElementById("scanImgWrap").style.display = "none";
+    document.getElementById("scanPlaceholder").style.display = "block";
+    document.getElementById("scanLead").textContent = "이미지를 첨부하고 '분석 시작하기'를 누르면 여기서 스캔 과정을 확인할 수 있습니다.";
+    document.getElementById("stepList").innerHTML = "";
+    document.getElementById("processStatus").textContent = "";
+    document.getElementById("annotSection").style.display = "none";
+    document.getElementById("annotStatus").textContent = "";
+    document.getElementById("processCard").classList.remove("active-step");
+    document.getElementById("uploadCard").classList.add("active-step");
+    startBtn.disabled = true;
+    startBtn.textContent = "분석 시작하기";
+    showStage("stage-intro");
+  };
+}
+
+let scrollSpyObserver = null;
+function setupScrollSpy(){
+  if(scrollSpyObserver) scrollSpyObserver.disconnect();
+  const cards = document.querySelectorAll("#stage-review .card");
+  scrollSpyObserver = new IntersectionObserver((entries)=>{
+    entries.forEach(entry=>{
+      if(entry.isIntersecting){
+        cards.forEach(c=> c.classList.remove("active-step"));
+        entry.target.classList.add("active-step");
+      }
+    });
+  }, { root:null, rootMargin:"-45% 0px -45% 0px", threshold:0 });
+  cards.forEach(c=> scrollSpyObserver.observe(c));
+}
+
+function initReview(){
+  bindAIFeedback();
+  bindResetButton();
+  renderThumbs();
+  buildChecklistDOM();
+  renderSummary();
+  renderOverallText();
+  setupScrollSpy();
+}
+
+loadState();
+renderThumbsMini();
+</script>
+</body>
+</html>

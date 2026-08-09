@@ -55,19 +55,23 @@ async function readSeedData() {
 
 /**
  * Claude에게 대체 레퍼런스 1개를 찾아달라고 요청한다.
+ * variantHint: 같은 요청 안에서 병렬로 여러 개를 찾을 때, 서로 겹치지 않게 유도하는 힌트 문구.
  */
-async function findReplacementReference({ tier, genre, projectName, excludeNames }) {
+async function findReplacementReference({ tier, genre, projectName, excludeNames, variantHint }) {
   const spec = TIER_SPEC[tier];
   const genreInstruction =
     tier === 3
       ? "업종은 무관하게, 스타일과 인터랙션이 Tier 3 기준에 맞고 반응도가 검증된 사이트를 찾는다."
-      : `대상 기업(${projectName})과 동일하거나 인접한 장르(${genre})의 실제 기업/브랜드 사이트를 찾는다.`;
+      : genre
+      ? `대상 기업(${projectName})과 동일하거나 인접한 장르(${genre})의 실제 기업/브랜드 사이트를 찾는다.`
+      : `대상 기업(${projectName})의 업종을 너의 지식과 web_search로 파악한 뒤, 그와 동일하거나 인접한 장르의 실제 기업/브랜드 사이트를 찾는다.`;
 
   const prompt = `당신은 디자인 레퍼런스 큐레이터다. "${projectName}" 신규 기업사이트 제안을 위한 무드보드에 넣을 레퍼런스 1개를 새로 찾아라.
 
 [Tier 규칙] ${spec.label}
 ${spec.rule}
 ${genreInstruction}
+${variantHint || ""}
 
 [출처 제한] Awwwards, CSS Design Awards, GDWEB 세 곳에서만 찾는다. web_search 툴로 실제로 검색하고, 상세페이지를 확인해서 아래 반응도 근거를 반드시 확보한다.
 - Awwwards: 커뮤니티 평균 평점, Site of the Day/Honorable Mention 여부
@@ -105,6 +109,35 @@ ${genreInstruction}
   if (parsed.error) {
     throw new Error(parsed.error);
   }
+  return parsed;
+}
+
+/**
+ * 자유 텍스트 요청(예: "아모레퍼시픽 기업사이트를 찾아줘")에서 기업/프로젝트명과
+ * 업종(장르)을 추출한다. web_search 없이 빠르게 한 번만 호출한다.
+ */
+async function parseProjectQuery(query) {
+  const prompt = `사용자가 디자인 레퍼런스 무드보드 도구에 다음과 같이 입력했다: "${query}"
+
+여기서 사용자가 레퍼런스를 찾고 싶어하는 기업/브랜드명과, 그 기업이 속한 업종(장르)을 파악하라.
+너가 알고 있는 지식을 기반으로 판단하고, 확실하지 않으면 합리적으로 추론하라.
+
+다른 설명 없이 아래 JSON만 출력하라:
+{
+  "project": "기업/브랜드명 (예: 아모레퍼시픽)",
+  "genre": "업종/장르 (예: 뷰티/코스메틱)"
+}`;
+
+  const response = await anthropic.messages.create({
+    model: MODEL,
+    max_tokens: 300,
+    messages: [{ role: "user", content: prompt }],
+  });
+  const text = response.content.filter((b) => b.type === "text").map((b) => b.text).join("\n");
+  const match = text.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error("요청에서 기업명을 파악하지 못했습니다.");
+  const parsed = JSON.parse(match[0]);
+  if (!parsed.project) throw new Error("요청에서 기업명을 파악하지 못했습니다.");
   return parsed;
 }
 
@@ -152,6 +185,67 @@ app.post("/api/research", async (req, res) => {
     }
 
     res.json({ added });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 자유 텍스트("아모레퍼시픽 기업사이트를 찾아줘")에서 기업명/장르를 추출한다.
+// body: { query: string }
+app.post("/api/parse-query", async (req, res) => {
+  try {
+    const { query } = req.body;
+    if (!query || !query.trim()) {
+      return res.status(400).json({ error: "검색어를 입력해주세요." });
+    }
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return res.status(500).json({ error: "서버에 ANTHROPIC_API_KEY가 설정되어 있지 않습니다." });
+    }
+    const parsed = await parseProjectQuery(query.trim());
+    res.json(parsed);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 지정한 Tier 하나에 대해 새 레퍼런스 여러 개를 병렬로 찾아서 반환한다 (서버는 저장하지 않음).
+// body: { project, genre, tier: 1|2|3, count(기본 6), excludeNames: string[] }
+app.post("/api/generate-tier", async (req, res) => {
+  try {
+    const { project, genre = "", tier, count = 6, excludeNames = [] } = req.body;
+    if (!project) return res.status(400).json({ error: "project가 필요합니다." });
+    if (![1, 2, 3].includes(tier)) {
+      return res.status(400).json({ error: "tier는 1, 2, 3 중 하나여야 합니다." });
+    }
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return res.status(500).json({ error: "서버에 ANTHROPIC_API_KEY가 설정되어 있지 않습니다." });
+    }
+
+    // 같은 요청 안의 count개는 서로 다른 후보를 찾도록 병렬로 호출한다.
+    // (완전한 중복 방지는 보장되지 않지만, 힌트로 다양성을 유도한다.)
+    const calls = Array.from({ length: count }, (_, i) =>
+      findReplacementReference({
+        tier,
+        genre,
+        projectName: project,
+        excludeNames,
+        variantHint: `이건 ${count}개 중 ${i + 1}번째 후보다. 다른 후보들과 겹치지 않는, 서로 다른 사이트를 찾아라.`,
+      })
+    );
+    const results = await Promise.allSettled(calls);
+    const added = [];
+    const errors = [];
+    results.forEach((r) => {
+      if (r.status === "fulfilled") added.push({ ...r.value, tier, status: "active" });
+      else errors.push(r.reason?.message || String(r.reason));
+    });
+
+    if (added.length === 0) {
+      return res.status(500).json({ error: "레퍼런스를 하나도 찾지 못했습니다: " + errors.join(" / ") });
+    }
+    res.json({ added, errors });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });

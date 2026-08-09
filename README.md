@@ -65,6 +65,32 @@ vercel domains add yourdomain.com
 
 DNS가 전파되면(보통 몇 분~몇 시간) `https://yourdomain.com` 으로 접속됩니다.
 
+## 이번 업데이트 내용
+
+- **통합 네비게이션**: 상단에 "1차 컨펌 리뷰" 사이트에서 쓰던 로고를 그대로 쓰고, `레퍼런스 찾기` / `1차 컨펌 리뷰` 두 탭으로 한 사이트에서 오갈 수 있습니다.
+  - `public/index.html` — 레퍼런스 찾기 (기존 무드보드)
+  - `public/review.html` — 1차 컨펌 리뷰 툴 (업로드해주신 파일을 그대로 이식, 기능 변경 없음)
+  - `public/logo.png` — 두 페이지가 공통으로 쓰는 로고
+- **자연어 검색으로 신규 무드보드 생성**: 레퍼런스 찾기 페이지 상단 검색창에 "아모레퍼시픽 기업사이트를 찾아줘"처럼 입력하면, Claude가 기업명·업종을 파악한 뒤 Tier 1·2·3 각 6개(총 18개)를 그 기업 전용으로 새로 검색해서 보여줍니다. 결과는 이 브라우저에 저장되고, 이후 기존처럼 카드별로 "제외 후 다시 찾기"도 가능합니다.
+  - 새로 추가된 API: `POST /api/parse-query` (검색어 → 기업명/업종 추출), `POST /api/generate-tier` (Tier 하나당 레퍼런스 여러 개를 병렬로 검색)
+
+### Vercel 재배포 시 덮어써야 할 파일
+
+이미 배포된 프로젝트 폴더에 파일만 교체하고 싶다면, 이번에 바뀐 파일은 이것뿐입니다:
+
+**수정된 파일**
+- `public/index.html`
+- `public/app.js`
+- `src/app.js`
+
+**새로 추가된 파일**
+- `public/review.html`
+- `public/logo.png`
+
+`server.js`, `api/index.js`, `vercel.json`, `package.json`, `data/moodboard_data_amorepacific.json`은 이번에 바뀌지 않았습니다.
+
+가장 안전한 방법은 그냥 이 폴더 전체로 다시 배포하는 것입니다 (`vercel --prod`, 또는 Git 연동이라면 그냥 push). 파일을 하나씩 수동으로 교체하는 경우 위 5개 파일만 덮어쓰면 됩니다.
+
 ## 사용 방법 (배포 후에도 동일)
 
 1. 카드 오른쪽 위 "제외" 체크박스로 바꾸고 싶은 레퍼런스를 선택합니다.
@@ -78,6 +104,11 @@ DNS가 전파되면(보통 몇 분~몇 시간) `https://yourdomain.com` 으로 �
 - `data/moodboard_data_amorepacific.json` — 배포에 포함되는 **읽기 전용 시드 데이터**입니다. 최초 로딩 시 한 번만 사용되고, 그 이후 변경사항(제외/추가)은 서버 파일이 아니라 브라우저 localStorage에 저장됩니다.
 - 여러 사람이 같은 배포 URL을 열어도 서로의 브라우저 상태에는 영향을 주지 않습니다(공유 DB가 아님). 팀원끼리 결과를 공유하려면 브라우저 개발자도구 콘솔에서 `localStorage.getItem(storageKey)` 값을 복사해 전달하거나, 추후 실제 DB(Vercel Postgres/KV 등) 연동이 필요합니다.
 - 다른 프로젝트로 새로 시작하려면 이 JSON 파일의 `project`, `genre`, `references`를 교체하고 다시 배포하세요.
+
+## 알아둘 점 (검색 기능 관련)
+
+- `/api/generate-tier`는 Tier 하나(6개)를 병렬로 검색하므로 요청 하나당 대략 가장 느린 검색 1건 정도의 시간(약 10~30초)이 걸립니다. Vercel 서버리스 함수 실행 시간 제한(플랜별로 다름, Hobby는 기본적으로 짧고 Pro는 더 김)에 걸린다면, `src/app.js`의 `count`를 6보다 줄이거나 Vercel 플랜/`maxDuration` 설정을 확인하세요.
+- 병렬로 6개를 동시에 찾다 보니 아주 드물게 같은 사이트가 중복으로 나올 수 있습니다. 발견하면 카드의 "제외" 체크 후 "선택 항목 제외하고 새로 찾기"로 바로 하나만 다시 뽑을 수 있습니다.
 
 ## 알아둘 점
 

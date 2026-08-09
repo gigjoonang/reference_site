@@ -168,6 +168,72 @@ async function requestNewReferences(tier) {
   }
 }
 
+// 검색창: "OOO 기업사이트를 찾아줘" 같은 자유 텍스트로 완전히 새 무드보드(18개)를 생성한다.
+async function searchNewProject() {
+  const input = document.getElementById("searchInput");
+  const btn = document.getElementById("searchBtn");
+  const status = document.getElementById("searchStatus");
+  const query = input.value.trim();
+  if (!query) return;
+
+  btn.disabled = true;
+  input.disabled = true;
+  status.textContent = "요청을 분석하는 중...";
+
+  try {
+    // 1) 기업명/장르 추출
+    const parseRes = await fetch("/api/parse-query", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query }),
+    });
+    const parsed = await parseRes.json();
+    if (!parseRes.ok) throw new Error(parsed.error || "요청을 이해하지 못했습니다.");
+
+    const newData = { project: parsed.project, genre: parsed.genre, references: [] };
+    const allNames = [];
+
+    // 2) Tier 1 -> 2 -> 3 순서로 6개씩 생성 (진행 상황을 화면에 표시)
+    const tierLabels = { 1: "Tier 1 (평범한 레이아웃)", 2: "Tier 2 (트렌디하지만 정돈된 레이아웃)", 3: "Tier 3 (과감한 인터랙션)" };
+    for (const tier of [1, 2, 3]) {
+      status.textContent = `${parsed.project} - ${tierLabels[tier]} 6개 검색 중... (몇십 초 걸릴 수 있어요)`;
+      const res = await fetch("/api/generate-tier", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          project: parsed.project,
+          genre: parsed.genre,
+          tier,
+          count: 6,
+          excludeNames: allNames,
+        }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || `Tier ${tier} 생성에 실패했습니다.`);
+      newData.references.push(...body.added);
+      body.added.forEach((r) => allNames.push(r.name));
+      // 중간 결과를 바로 화면에 반영해서 진행 상황이 보이게 한다.
+      currentData = newData;
+      render();
+    }
+
+    storageKey = storageKeyFor(newData.project);
+    currentData = newData;
+    saveToLocalStorage();
+    excludedSelection[1].clear();
+    excludedSelection[2].clear();
+    excludedSelection[3].clear();
+    finishLoad();
+    status.textContent = `"${parsed.project}" 무드보드 생성 완료 (18개)`;
+  } catch (err) {
+    console.error(err);
+    status.textContent = "오류: " + err.message;
+  } finally {
+    btn.disabled = false;
+    input.disabled = false;
+  }
+}
+
 function escapeHtml(str) {
   return String(str)
     .replace(/&/g, "&amp;")
@@ -180,6 +246,15 @@ function escapeAttr(str) {
 function escapeJs(str) {
   return String(str).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
 }
+
+document.addEventListener("DOMContentLoaded", () => {
+  const input = document.getElementById("searchInput");
+  if (input) {
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") searchNewProject();
+    });
+  }
+});
 
 loadData().catch((err) => {
   document.querySelector(".wrap").insertAdjacentHTML(
