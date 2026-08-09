@@ -1,42 +1,67 @@
 // 무드보드 프론트엔드 로직
+// - 기본 화면은 대화창(빈 상태)만 보여준다. 사용자가 기업명을 입력해서 검색하면
+//   Claude가 Tier 1~3 각 6개(총 18개)를 실시간으로 찾아오고, 그때부터 결과 화면으로 전환된다.
 // - 서버는 상태를 저장하지 않는다(Vercel 등 서버리스 대응). 대신 브라우저 localStorage에
-//   현재 상태(제외 처리 + 새로 추가된 레퍼런스)를 저장한다.
-// - 최초 로딩: localStorage에 저장된 값이 있으면 그걸 쓰고, 없으면 /api/data(배포에 포함된
-//   시드 JSON)를 읽어와 localStorage에 저장한다.
-// - "선택 항목 제외하고 새로 찾기": 선택된 카드는 로컬에서 바로 excluded 처리하고,
-//   POST /api/research 로 같은 개수만큼 새 레퍼런스를 받아와 추가한다.
+//   "가장 최근 검색한 프로젝트가 무엇인지" + "그 프로젝트의 데이터"를 저장해서, 새로고침해도
+//   마지막 결과 화면이 유지되게 한다.
+
+const LAST_KEY_POINTER = "moodboard_last_key";
 
 let currentData = null;
-let storageKey = "moodboard_state_default";
+let storageKey = null;
 const excludedSelection = { 1: new Set(), 2: new Set(), 3: new Set() };
 
-async function loadData() {
-  const cached = localStorage.getItem(storageKeyGuess());
-  if (cached) {
-    try {
-      currentData = JSON.parse(cached);
-      storageKey = storageKeyFor(currentData.project);
-      finishLoad();
-      return;
-    } catch (e) {
-      // 캐시가 깨졌으면 무시하고 시드로 다시 불러온다.
-    }
-  }
-
-  const res = await fetch("/api/data");
-  if (!res.ok) throw new Error("데이터를 불러오지 못했습니다.");
-  currentData = await res.json();
-  storageKey = storageKeyFor(currentData.project);
-  saveToLocalStorage();
-  finishLoad();
-}
-
-// 프로젝트명을 아직 모르는 최초 호출 시점엔 알려진 기본 키로 먼저 시도한다.
-function storageKeyGuess() {
-  return storageKey;
-}
 function storageKeyFor(project) {
   return "moodboard_state_" + (project || "default").replace(/\s+/g, "_");
+}
+
+// ===== 화면 상태 전환 (빈 상태 <-> 결과 상태) =====
+function showEmptyState() {
+  document.getElementById("empty-state").style.display = "flex";
+  document.getElementById("results-state").style.display = "none";
+}
+function enterResultsView() {
+  document.getElementById("empty-state").style.display = "none";
+  document.getElementById("results-state").style.display = "block";
+}
+function isEmptyStateVisible() {
+  return document.getElementById("empty-state").style.display !== "none";
+}
+
+// 현재 보이는 상태에 맞는 입력창/버튼/상태표시 요소를 돌려준다.
+function getActiveControls() {
+  if (isEmptyStateVisible()) {
+    return {
+      input: document.getElementById("chatInput"),
+      button: document.getElementById("chatSendBtn"),
+      status: document.getElementById("searchStatus"),
+    };
+  }
+  return {
+    input: document.getElementById("compactInput"),
+    button: document.getElementById("compactSendBtn"),
+    status: document.getElementById("compactStatus"),
+  };
+}
+
+// ===== 최초 로딩: 마지막으로 검색했던 결과가 있으면 그걸 보여주고, 없으면 빈 대화창만 보여준다 =====
+async function loadData() {
+  const lastKey = localStorage.getItem(LAST_KEY_POINTER);
+  if (lastKey) {
+    const cached = localStorage.getItem(lastKey);
+    if (cached) {
+      try {
+        currentData = JSON.parse(cached);
+        storageKey = lastKey;
+        finishLoad();
+        enterResultsView();
+        return;
+      } catch (e) {
+        // 캐시가 깨졌으면 무시하고 빈 상태로 시작한다.
+      }
+    }
+  }
+  showEmptyState();
 }
 
 function finishLoad() {
@@ -44,25 +69,25 @@ function finishLoad() {
     (currentData.project || "무드보드") + " 디자인 레퍼런스 무드보드";
   document.getElementById("footer-text").innerHTML =
     `Tier 1·2·3 기준 무드보드입니다. 이 브라우저에만 저장됩니다 (localStorage). ` +
-    `<a href="#" onclick="resetToSeed();return false;" style="color:var(--sub);">초기 데이터로 리셋</a>`;
+    `<a href="#" onclick="resetToEmpty();return false;" style="color:var(--sub);">처음으로 (새로 검색)</a>`;
   render();
 }
 
 function saveToLocalStorage() {
   localStorage.setItem(storageKey, JSON.stringify(currentData));
+  localStorage.setItem(LAST_KEY_POINTER, storageKey);
 }
 
-async function resetToSeed() {
-  if (!confirm("지금까지 이 브라우저에서 바꾼 내용을 지우고 초기 데이터로 되돌릴까요?")) return;
-  localStorage.removeItem(storageKey);
-  const res = await fetch("/api/data");
-  currentData = await res.json();
-  storageKey = storageKeyFor(currentData.project);
-  saveToLocalStorage();
+function resetToEmpty() {
+  if (!confirm("지금 보고 있는 무드보드를 닫고 새로 검색할까요? (저장된 결과는 지워지지 않고 다음에 같은 기업을 검색하면 다시 나타날 수 있습니다)")) return;
+  currentData = null;
+  storageKey = null;
   excludedSelection[1].clear();
   excludedSelection[2].clear();
   excludedSelection[3].clear();
-  render();
+  showEmptyState();
+  const input = document.getElementById("chatInput");
+  if (input) { input.value = ""; input.focus(); }
 }
 
 function render() {
@@ -121,6 +146,7 @@ function updateStatusLabel(tier) {
   document.getElementById(`btn-${tier}`).disabled = n === 0;
 }
 
+// ===== 기존 결과에서 선택한 카드만 다시 찾기 (Tier 단위) =====
 async function requestNewReferences(tier) {
   const names = Array.from(excludedSelection[tier]);
   if (names.length === 0) return;
@@ -131,13 +157,11 @@ async function requestNewReferences(tier) {
   statusEl.textContent = `Claude가 ${names.length}개 레퍼런스를 재검색 중입니다... (몇십 초 걸릴 수 있어요)`;
 
   try {
-    // 1) 로컬에서 먼저 제외 처리
     currentData.references.forEach((r) => {
       if (names.includes(r.name)) r.status = "excluded";
     });
     const allNames = currentData.references.map((r) => r.name);
 
-    // 2) 서버(Claude API)에 같은 개수만큼 새 레퍼런스 요청
     const res = await fetch("/api/research", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -168,20 +192,18 @@ async function requestNewReferences(tier) {
   }
 }
 
-// 검색창: "OOO 기업사이트를 찾아줘" 같은 자유 텍스트로 완전히 새 무드보드(18개)를 생성한다.
+// ===== 대화창 검색: 자유 텍스트로 완전히 새 무드보드(18개)를 생성한다 =====
 async function searchNewProject() {
-  const input = document.getElementById("searchInput");
-  const btn = document.getElementById("searchBtn");
-  const status = document.getElementById("searchStatus");
-  const query = input.value.trim();
-  if (!query) return;
+  const { input, button, status } = getActiveControls();
+  const query = (input.value || "").trim();
+  if (!query) { input.focus(); return; }
 
-  btn.disabled = true;
+  const wasEmptyState = isEmptyStateVisible();
+  button.disabled = true;
   input.disabled = true;
   status.textContent = "요청을 분석하는 중...";
 
   try {
-    // 1) 기업명/장르 추출
     const parseRes = await fetch("/api/parse-query", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -193,7 +215,6 @@ async function searchNewProject() {
     const newData = { project: parsed.project, genre: parsed.genre, references: [] };
     const allNames = [];
 
-    // 2) Tier 1 -> 2 -> 3 순서로 6개씩 생성 (진행 상황을 화면에 표시)
     const tierLabels = { 1: "Tier 1 (평범한 레이아웃)", 2: "Tier 2 (트렌디하지만 정돈된 레이아웃)", 3: "Tier 3 (과감한 인터랙션)" };
     for (const tier of [1, 2, 3]) {
       status.textContent = `${parsed.project} - ${tierLabels[tier]} 6개 검색 중... (몇십 초 걸릴 수 있어요)`;
@@ -212,7 +233,9 @@ async function searchNewProject() {
       if (!res.ok) throw new Error(body.error || `Tier ${tier} 생성에 실패했습니다.`);
       newData.references.push(...body.added);
       body.added.forEach((r) => allNames.push(r.name));
-      // 중간 결과를 바로 화면에 반영해서 진행 상황이 보이게 한다.
+
+      // 첫 Tier 결과가 도착하는 순간 결과 화면으로 전환해서 진행 상황이 바로 보이게 한다.
+      if (isEmptyStateVisible()) enterResultsView();
       currentData = newData;
       render();
     }
@@ -224,13 +247,23 @@ async function searchNewProject() {
     excludedSelection[2].clear();
     excludedSelection[3].clear();
     finishLoad();
-    status.textContent = `"${parsed.project}" 무드보드 생성 완료 (18개)`;
+    document.getElementById("setup-warning").style.display = "none";
+
+    const { status: finalStatus } = getActiveControls();
+    finalStatus.textContent = `"${parsed.project}" 무드보드 생성 완료 (18개)`;
+    input.value = "";
   } catch (err) {
     console.error(err);
     status.textContent = "오류: " + err.message;
+    if (/api[_-]?key/i.test(err.message)) {
+      document.getElementById("setup-warning").style.display = "block";
+    }
+    // 실패했고 아직 결과 화면으로 전환되지 않았다면 빈 상태 그대로 유지한다.
+    if (wasEmptyState && !currentData) showEmptyState();
   } finally {
-    btn.disabled = false;
-    input.disabled = false;
+    const controls = getActiveControls();
+    controls.button.disabled = false;
+    controls.input.disabled = false;
   }
 }
 
@@ -248,17 +281,32 @@ function escapeJs(str) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  const input = document.getElementById("searchInput");
-  if (input) {
-    input.addEventListener("keydown", (e) => {
+  const chatInput = document.getElementById("chatInput");
+  if (chatInput) {
+    chatInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") searchNewProject();
     });
   }
+  const compactInput = document.getElementById("compactInput");
+  if (compactInput) {
+    compactInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") searchNewProject();
+    });
+  }
+  document.querySelectorAll(".chip").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      const q = chip.dataset.q;
+      const input = document.getElementById("chatInput");
+      input.value = q;
+      searchNewProject();
+    });
+  });
 });
 
 loadData().catch((err) => {
-  document.querySelector(".wrap").insertAdjacentHTML(
+  console.error(err);
+  document.body.insertAdjacentHTML(
     "afterbegin",
-    `<div class="setup-warning" style="display:block;">초기 데이터 로딩 실패: ${escapeHtml(err.message)}. 서버가 정상 배포/실행 중인지 확인하세요.</div>`
+    `<div class="setup-warning" style="display:block;">초기화 실패: ${escapeHtml(err.message)}. 서버가 정상 배포/실행 중인지 확인하세요.</div>`
   );
 });

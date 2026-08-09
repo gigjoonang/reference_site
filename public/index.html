@@ -19,19 +19,34 @@
     background:var(--bg); color:var(--text); line-height:1.6;
   }
   .page-title{padding:28px 24px 4px; text-align:center;}
-  .page-title-logo{height:28px; width:auto; display:inline-block;}
+  .page-title-logo{height:22px; width:auto; display:inline-block;}
 
   .site-nav{display:flex; justify-content:center; gap:8px; padding:14px 24px 4px; flex-wrap:wrap;}
   .site-nav-tab{font-size:13px; font-weight:600; padding:8px 18px; border-radius:99px; border:1px solid var(--border); color:var(--sub); text-decoration:none; background:#fff; transition:.15s;}
   .site-nav-tab:hover{border-color:var(--accent); color:var(--accent);}
   .site-nav-tab.active{background:var(--accent); color:#fff; border-color:var(--accent);}
 
-  .search-card{max-width:1180px; margin:20px auto 0; padding:0 20px;}
-  .search-box{background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:18px 20px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
-  .search-box input{flex:1 1 320px; border:1px solid var(--border); border-radius:8px; padding:10px 14px; font-size:14px; font-family:inherit;}
-  .search-box button{font-size:13.5px; font-weight:600; padding:10px 18px; border-radius:8px; border:none; background:var(--accent); color:#fff; cursor:pointer;}
-  .search-box button:disabled{opacity:.5; cursor:not-allowed;}
-  .search-status{max-width:1180px; margin:8px auto 0; padding:0 24px; font-size:12.5px; color:var(--sub);}
+  /* 대화형 랜딩(빈 상태) */
+  .empty-state{min-height:62vh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 20px; gap:14px;}
+  .chat-shell{width:100%; max-width:640px; display:flex; flex-direction:column; align-items:center; gap:14px;}
+  .chip-row{display:flex; flex-wrap:wrap; gap:8px; justify-content:center;}
+  .chip{font-size:12px; padding:7px 14px; border-radius:99px; border:1px solid var(--border); background:var(--panel); color:var(--sub); cursor:pointer; transition:.15s; white-space:nowrap; font-family:inherit;}
+  .chip:hover{border-color:var(--accent); color:var(--accent);}
+  .chat-box{width:100%; background:var(--panel); border:1px solid var(--border); border-radius:18px; padding:8px 8px 8px 20px; display:flex; align-items:center; gap:10px; box-shadow:0 6px 24px rgba(20,20,30,.06);}
+  .chat-box input{flex:1; border:none; outline:none; font-size:14px; font-family:inherit; background:transparent; color:var(--text); padding:8px 0;}
+  .chat-box input::placeholder{color:#9aa0ab;}
+  .chat-send{flex-shrink:0; width:36px; height:36px; border-radius:50%; border:none; background:var(--accent); color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center;}
+  .chat-send:disabled{opacity:.5; cursor:not-allowed;}
+  .chat-hint{font-size:11.5px; color:#9aa0ab;}
+  .chat-status{max-width:640px; text-align:center; font-size:12.5px; color:var(--sub); min-height:16px;}
+
+  /* 결과가 나온 뒤 상단에 남는 컴팩트 검색바 */
+  .compact-search-card{max-width:1180px; margin:20px auto 0; padding:0 20px;}
+  .compact-search-box{background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:14px 16px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+  .compact-search-box input{flex:1 1 320px; border:1px solid var(--border); border-radius:8px; padding:9px 12px; font-size:13.5px; font-family:inherit;}
+  .compact-search-box button{font-size:13px; font-weight:600; padding:9px 16px; border-radius:8px; border:none; background:var(--accent); color:#fff; cursor:pointer;}
+  .compact-search-box button:disabled{opacity:.5; cursor:not-allowed;}
+  .compact-status{max-width:1180px; margin:6px auto 0; padding:0 24px; font-size:12.5px; color:var(--sub);}
 
   .wrap{max-width:1180px; margin:0 auto; padding:20px 20px 80px;}
   header.top{margin-bottom:24px; text-align:left;}
@@ -102,7 +117,7 @@
 <body>
 
 <header class="page-title">
-  <img src="logo.png" alt="로고" class="page-title-logo">
+  <img src="logo-mxc.png" alt="AI WORK MXC" class="page-title-logo">
 </header>
 <nav class="site-nav">
   <a href="index.html" class="site-nav-tab active">레퍼런스 찾기</a>
@@ -113,57 +128,82 @@
   서버에 ANTHROPIC_API_KEY가 설정되어 있지 않은 것 같습니다. .env 파일을 확인하고 서버를 재시작해주세요.
 </div>
 
-<div class="search-card">
-  <div class="search-box">
-    <input type="text" id="searchInput" placeholder="예: 아모레퍼시픽 기업사이트를 찾아줘">
-    <button id="searchBtn" onclick="searchNewProject()">검색</button>
+<!-- 빈 상태: 대화창만 노출 -->
+<div id="empty-state" class="empty-state">
+  <div class="chat-shell">
+    <div class="chip-row" id="chipRow">
+      <button type="button" class="chip" data-q="아모레퍼시픽 기업사이트를 찾아줘">아모레퍼시픽 기업사이트</button>
+      <button type="button" class="chip" data-q="핀테크 스타트업 사이트를 찾아줘">핀테크 스타트업</button>
+      <button type="button" class="chip" data-q="럭셔리 주얼리 브랜드 사이트를 찾아줘">럭셔리 주얼리 브랜드</button>
+      <button type="button" class="chip" data-q="친환경 소비재 브랜드 사이트를 찾아줘">친환경 소비재 브랜드</button>
+      <button type="button" class="chip" data-q="헬스케어 스타트업 사이트를 찾아줘">헬스케어 스타트업</button>
+      <button type="button" class="chip" data-q="글로벌 물류기업 사이트를 찾아줘">글로벌 물류기업</button>
+    </div>
+    <div class="chat-box">
+      <input type="text" id="chatInput" placeholder="예: 나이키 런 클럽과 유사한 라이프스타일 경쟁사 사이트를 찾아줘">
+      <button class="chat-send" id="chatSendBtn" onclick="searchNewProject()" aria-label="검색">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="8 7 17 7 17 16"></polyline></svg>
+      </button>
+    </div>
+    <div class="chat-hint">Enter를 누르면 바로 검색돼요 · 위 예시를 눌러도 됩니다</div>
   </div>
+  <div class="chat-status" id="searchStatus"></div>
 </div>
-<div class="search-status" id="searchStatus"></div>
 
-<div class="wrap">
-  <header class="top">
-    <p>Awwwards / CSS Design Awards / GDWEB 세 곳에서만, 실제 반응도·인기도를 확인해 고른 레퍼런스입니다. 카드 오른쪽 위 체크박스로 제외할 항목을 표시한 뒤, 각 Tier 하단의 버튼을 누르면 Claude API가 같은 개수만큼 새 레퍼런스를 실시간으로 찾아 채워 넣습니다. 위 검색창에 기업명을 입력하면 그 기업 전용 무드보드(18개)를 새로 생성합니다.</p>
-  </header>
-
-  <section class="card tier1">
-    <h2><span class="num">1</span>Tier 1 — 평범한 레이아웃</h2>
-    <p class="desc">안전하고 정석적인 기업 사이트<span class="tier-tag">리스크 낮음</span></p>
-    <div class="grid" id="grid-1"></div>
-    <div class="tier-actions">
-      <button id="btn-1" onclick="requestNewReferences(1)">선택 항목 제외하고 새로 찾기</button>
-      <span class="status" id="status-1"></span>
+<!-- 결과 상태: 검색이 끝나면 컴팩트 검색바 + Tier 결과가 나타남 -->
+<div id="results-state" style="display:none;">
+  <div class="compact-search-card">
+    <div class="compact-search-box">
+      <input type="text" id="compactInput" placeholder="다른 기업사이트도 찾아보기 (예: 아모레퍼시픽 기업사이트를 찾아줘)">
+      <button id="compactSendBtn" onclick="searchNewProject()">검색</button>
     </div>
-  </section>
+    <div class="compact-status" id="compactStatus"></div>
+  </div>
 
-  <section class="card tier2">
-    <h2><span class="num">2</span>Tier 2 — 트렌디하지만 정돈된 레이아웃</h2>
-    <p class="desc">최신 톤을 따르되 구조는 명확<span class="tier-tag">리스크 중간</span></p>
-    <div class="grid" id="grid-2"></div>
-    <div class="tier-actions">
-      <button id="btn-2" onclick="requestNewReferences(2)">선택 항목 제외하고 새로 찾기</button>
-      <span class="status" id="status-2"></span>
-    </div>
-  </section>
+  <div class="wrap">
+    <header class="top">
+      <p>Awwwards / CSS Design Awards / GDWEB 세 곳에서만, 실제 반응도·인기도를 확인해 고른 레퍼런스입니다. 카드 오른쪽 위 체크박스로 제외할 항목을 표시한 뒤, 각 Tier 하단의 버튼을 누르면 Claude API가 같은 개수만큼 새 레퍼런스를 실시간으로 찾아 채워 넣습니다.</p>
+    </header>
 
-  <section class="card tier3">
-    <h2><span class="num">3</span>Tier 3 — 매우 트렌디하면서 과감한 인터랙션</h2>
-    <p class="desc">WebGL/3D/실험적 구조 중심 · 고득점 위주<span class="tier-tag">리스크 높음</span></p>
-    <div class="grid" id="grid-3"></div>
-    <div class="tier-actions">
-      <button id="btn-3" onclick="requestNewReferences(3)">선택 항목 제외하고 새로 찾기</button>
-      <span class="status" id="status-3"></span>
-    </div>
-  </section>
+    <section class="card tier1">
+      <h2><span class="num">1</span>Tier 1 — 평범한 레이아웃</h2>
+      <p class="desc">안전하고 정석적인 기업 사이트<span class="tier-tag">리스크 낮음</span></p>
+      <div class="grid" id="grid-1"></div>
+      <div class="tier-actions">
+        <button id="btn-1" onclick="requestNewReferences(1)">선택 항목 제외하고 새로 찾기</button>
+        <span class="status" id="status-1"></span>
+      </div>
+    </section>
 
-  <section class="card">
-    <h2><span class="num" style="background:var(--accent);">✓</span>안내</h2>
-    <div class="overall-text">
-      <p>이 페이지는 정적 무드보드 문서를 Claude API와 연동해 실시간으로 갱신할 수 있게 만든 버전입니다. 체크박스로 제외할 카드를 고르고 버튼을 누르면, 서버가 Claude의 web_search 툴로 Awwwards/CSSDA/GDWEB을 다시 검색해 같은 개수만큼 새 레퍼런스로 교체합니다. 응답은 실제 API 호출 결과이므로 몇 초~몇십 초 걸릴 수 있습니다.</p>
-    </div>
-  </section>
+    <section class="card tier2">
+      <h2><span class="num">2</span>Tier 2 — 트렌디하지만 정돈된 레이아웃</h2>
+      <p class="desc">최신 톤을 따르되 구조는 명확<span class="tier-tag">리스크 중간</span></p>
+      <div class="grid" id="grid-2"></div>
+      <div class="tier-actions">
+        <button id="btn-2" onclick="requestNewReferences(2)">선택 항목 제외하고 새로 찾기</button>
+        <span class="status" id="status-2"></span>
+      </div>
+    </section>
 
-  <footer id="footer-text"></footer>
+    <section class="card tier3">
+      <h2><span class="num">3</span>Tier 3 — 매우 트렌디하면서 과감한 인터랙션</h2>
+      <p class="desc">WebGL/3D/실험적 구조 중심 · 고득점 위주<span class="tier-tag">리스크 높음</span></p>
+      <div class="grid" id="grid-3"></div>
+      <div class="tier-actions">
+        <button id="btn-3" onclick="requestNewReferences(3)">선택 항목 제외하고 새로 찾기</button>
+        <span class="status" id="status-3"></span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2><span class="num" style="background:var(--accent);">✓</span>안내</h2>
+      <div class="overall-text">
+        <p>이 페이지는 대화창에 입력한 요청을 바탕으로 Claude API가 실시간으로 레퍼런스를 찾아주는 버전입니다. 체크박스로 제외할 카드를 고르고 버튼을 누르면, 서버가 Claude의 web_search 툴로 Awwwards/CSSDA/GDWEB을 다시 검색해 같은 개수만큼 새 레퍼런스로 교체합니다. 응답은 실제 API 호출 결과이므로 몇 초~몇십 초 걸릴 수 있습니다.</p>
+      </div>
+    </section>
+
+    <footer id="footer-text"></footer>
+  </div>
 </div>
 
 <script src="app.js"></script>
