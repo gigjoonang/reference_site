@@ -143,7 +143,8 @@ async function parseProjectQuery(query) {
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+// 시안 스크린샷(base64)을 주고받아야 해서 기본 1MB 제한보다 넉넉하게 잡는다.
+app.use(express.json({ limit: "25mb" }));
 app.use(express.static(path.join(__dirname, "..", "public")));
 
 // 배포에 포함된 시드 데이터 조회 (읽기 전용 - 서버리스에서도 안전)
@@ -246,6 +247,54 @@ app.post("/api/generate-tier", async (req, res) => {
       return res.status(500).json({ error: "레퍼런스를 하나도 찾지 못했습니다: " + errors.join(" / ") });
     }
     res.json({ added, errors });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 1차 컨펌 리뷰 툴: 첨부된 시안 이미지를 Claude Vision에 바로 보내서 피드백을 받는다.
+// (기존의 "프롬프트 생성 -> Claude 대화창에 붙여넣기 -> 응답 복사해오기" 수동 흐름을 대체)
+// body: { images: string[] (data URL), criteriaPrompt: string }
+app.post("/api/review-feedback", async (req, res) => {
+  try {
+    const { images = [], criteriaPrompt } = req.body;
+    if (!Array.isArray(images) || images.length === 0) {
+      return res.status(400).json({ error: "분석할 시안 이미지가 없습니다. 먼저 이미지를 첨부해주세요." });
+    }
+    if (!criteriaPrompt || !criteriaPrompt.trim()) {
+      return res.status(400).json({ error: "검토 기준(criteriaPrompt)이 필요합니다." });
+    }
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return res.status(500).json({ error: "서버에 ANTHROPIC_API_KEY가 설정되어 있지 않습니다." });
+    }
+
+    const imageBlocks = images.map((dataUrl, i) => {
+      const m = /^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/.exec(dataUrl || "");
+      if (!m) throw new Error(`${i + 1}번째 이미지 형식을 읽을 수 없습니다.`);
+      return { type: "image", source: { type: "base64", media_type: m[1], data: m[2] } };
+    });
+
+    const response = await anthropic.messages.create({
+      model: MODEL,
+      max_tokens: 4096,
+      messages: [
+        {
+          role: "user",
+          content: [...imageBlocks, { type: "text", text: criteriaPrompt }],
+        },
+      ],
+    });
+
+    const feedback = response.content
+      .filter((b) => b.type === "text")
+      .map((b) => b.text)
+      .join("\n");
+
+    if (!feedback.trim()) {
+      throw new Error("Claude가 빈 응답을 반환했습니다. 잠시 후 다시 시도해주세요.");
+    }
+    res.json({ feedback });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
