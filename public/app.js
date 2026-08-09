@@ -22,8 +22,6 @@ function hasApiKey() {
 function updateSettingsIndicator() {
   const btn = document.getElementById("settingsBtn");
   if (btn) btn.classList.toggle("has-key", hasApiKey());
-  const warning = document.getElementById("setup-warning");
-  if (warning) warning.style.display = hasApiKey() ? "none" : "block";
 }
 function openSettingsModal() {
   const modal = document.getElementById("settingsModal");

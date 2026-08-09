@@ -6,8 +6,7 @@
 <title id="page-title-text">디자인 레퍼런스 무드보드</title>
 
 <meta property="og:type" content="website">
-<meta property="og:title" content="AI WORK MXC — 디자인 레퍼런스 무드보드">
-<meta property="og:description" content="Awwwards, CSS Design Awards, GDWEB에서 실시간으로 찾아주는 디자인 레퍼런스 무드보드">
+<meta property="og:title" content="AI WORK MXC">
 <meta property="og:url" content="https://reference-site-topaz.vercel.app/index.html">
 <meta property="og:image" content="https://reference-site-topaz.vercel.app/og-image.png">
 <meta property="og:image:width" content="1200">
@@ -29,18 +28,19 @@
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
     background:var(--bg); color:var(--text); line-height:1.6;
   }
-  .page-title{padding:28px 24px 4px; text-align:center; position:relative;}
+  .page-title{padding:22px 24px 4px;}
+  .header-row{display:flex; align-items:center; justify-content:space-between; max-width:1180px; margin:0 auto; gap:16px; flex-wrap:wrap;}
+  .header-right{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
   .page-title-logo{height:22px; width:auto; display:inline-block;}
 
-  .site-nav{display:flex; justify-content:center; gap:8px; padding:14px 24px 4px; flex-wrap:wrap;}
+  .site-nav{display:flex; gap:8px; flex-wrap:wrap;}
   .site-nav-tab{font-size:13px; font-weight:600; padding:8px 18px; border-radius:99px; border:1px solid var(--border); color:var(--sub); text-decoration:none; background:#fff; transition:.15s;}
   .site-nav-tab:hover{border-color:var(--accent); color:var(--accent);}
   .site-nav-tab.active{background:var(--accent); color:#fff; border-color:var(--accent);}
 
-  /* 우상단 설정(API 키) 버튼 */
+  /* 설정(API 키) 버튼 */
   .settings-btn{
-    position:absolute; top:24px; right:24px;
-    display:inline-flex; align-items:center; gap:6px;
+    display:inline-flex; align-items:center; gap:6px; flex-shrink:0;
     background:#fff; border:1px solid var(--border); border-radius:99px;
     padding:7px 13px 7px 11px; font-size:12.5px; font-weight:600; color:var(--sub);
     cursor:pointer; transition:.15s;
@@ -48,7 +48,7 @@
   .settings-btn:hover{border-color:var(--accent); color:var(--accent);}
   .settings-btn .dot{width:7px; height:7px; border-radius:50%; background:#d1d5db; flex-shrink:0;}
   .settings-btn.has-key .dot{background:#22c55e;}
-  @media (max-width:600px){ .settings-btn{position:static; margin:10px auto 0; width:fit-content;} }
+  @media (max-width:600px){ .header-row{justify-content:center; text-align:center;} .header-right{width:100%; justify-content:center;} }
 
   /* 설정 모달 */
   .modal-overlay{
@@ -77,18 +77,18 @@
   .modal-status.ok{color:#178a4c;}
 
   /* 대화형 랜딩(빈 상태) */
-  .empty-state{min-height:62vh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 20px; gap:14px;}
-  .chat-shell{width:100%; max-width:640px; display:flex; flex-direction:column; align-items:center; gap:14px;}
-  .chat-box{width:100%; background:var(--panel); border:1.5px solid var(--border); border-radius:18px; padding:8px 8px 8px 20px; display:flex; align-items:center; gap:10px; box-shadow:0 6px 24px rgba(20,20,30,.06); transition:border-color .15s, box-shadow .15s;}
+  .empty-state{min-height:62vh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 20px; gap:14px; text-align:center;}
+  .chat-shell{width:100%; max-width:680px; display:flex; flex-direction:column; align-items:center; gap:14px;}
+  .chat-box{width:100%; background:var(--panel); border:1.5px solid var(--border); border-radius:22px; padding:12px 12px 12px 26px; display:flex; align-items:center; gap:12px; box-shadow:0 6px 24px rgba(20,20,30,.06); transition:border-color .15s, box-shadow .15s;}
   .chat-box:focus-within{border-color:var(--accent); box-shadow:0 4px 18px rgba(0,0,0,.10);}
   .compact-search-box{transition:border-color .15s, box-shadow .15s;}
   .compact-search-box:focus-within{border-color:var(--accent); box-shadow:0 4px 18px rgba(0,0,0,.10);}
-  .chat-box input{flex:1; border:none; outline:none; font-size:14px; font-family:inherit; background:transparent; color:var(--text); padding:8px 0;}
+  .chat-box input{flex:1; border:none; outline:none; font-size:15.5px; font-family:inherit; background:transparent; color:var(--text); padding:10px 0;}
   .chat-box input::placeholder{color:#9aa0ab;}
-  .chat-send{flex-shrink:0; width:36px; height:36px; border-radius:50%; border:none; background:var(--accent); color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center;}
+  .chat-send{flex-shrink:0; width:44px; height:44px; border-radius:50%; border:none; background:var(--accent); color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center;}
   .chat-send:disabled{opacity:.5; cursor:not-allowed;}
-  .chat-hint{font-size:11.5px; color:#9aa0ab;}
-  .chat-status{max-width:640px; text-align:center; font-size:12.5px; color:var(--sub); min-height:16px;}
+  .chat-hint{font-size:11.5px; color:#9aa0ab; text-align:center;}
+  .chat-status{max-width:680px; text-align:center; font-size:12.5px; color:var(--sub); min-height:16px;}
 
   /* 결과가 나온 뒤 상단에 남는 컴팩트 검색바 */
   .compact-search-card{max-width:1180px; margin:20px auto 0; padding:0 20px;}
@@ -167,19 +167,19 @@
 <body>
 
 <header class="page-title">
-  <button type="button" id="settingsBtn" class="settings-btn" onclick="openSettingsModal()">
-    <span class="dot" id="settingsDot"></span>설정
-  </button>
-  <img src="logo-mxc.png" alt="AI WORK MXC" class="page-title-logo">
+  <div class="header-row">
+    <img src="logo-mxc.png" alt="AI WORK MXC" class="page-title-logo">
+    <div class="header-right">
+      <nav class="site-nav">
+        <a href="index.html" class="site-nav-tab active">레퍼런스 찾기</a>
+        <a href="review.html" class="site-nav-tab">1차 컨펌 리뷰</a>
+      </nav>
+      <button type="button" id="settingsBtn" class="settings-btn" onclick="openSettingsModal()">
+        <span class="dot" id="settingsDot"></span>설정
+      </button>
+    </div>
+  </div>
 </header>
-<nav class="site-nav">
-  <a href="index.html" class="site-nav-tab active">레퍼런스 찾기</a>
-  <a href="review.html" class="site-nav-tab">1차 컨펌 리뷰</a>
-</nav>
-
-<div id="setup-warning" class="setup-warning">
-  이용하려면 먼저 본인의 Anthropic API 키를 등록해야 합니다. 우측 상단 <strong>설정</strong>을 눌러 등록해주세요.
-</div>
 
 <!-- API 키 설정 모달 -->
 <div id="settingsModal" class="modal-overlay" style="display:none;" onclick="if(event.target===this) closeSettingsModal()">
