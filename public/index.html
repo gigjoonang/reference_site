@@ -29,10 +29,10 @@
   /* 대화형 랜딩(빈 상태) */
   .empty-state{min-height:62vh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 20px; gap:14px;}
   .chat-shell{width:100%; max-width:640px; display:flex; flex-direction:column; align-items:center; gap:14px;}
-  .chip-row{display:flex; flex-wrap:wrap; gap:8px; justify-content:center;}
-  .chip{font-size:12px; padding:7px 14px; border-radius:99px; border:1px solid var(--border); background:var(--panel); color:var(--sub); cursor:pointer; transition:.15s; white-space:nowrap; font-family:inherit;}
-  .chip:hover{border-color:var(--accent); color:var(--accent);}
-  .chat-box{width:100%; background:var(--panel); border:1px solid var(--border); border-radius:18px; padding:8px 8px 8px 20px; display:flex; align-items:center; gap:10px; box-shadow:0 6px 24px rgba(20,20,30,.06);}
+  .chat-box{width:100%; background:var(--panel); border:1.5px solid var(--border); border-radius:18px; padding:8px 8px 8px 20px; display:flex; align-items:center; gap:10px; box-shadow:0 6px 24px rgba(20,20,30,.06); transition:border-color .15s, box-shadow .15s;}
+  .chat-box:focus-within{border-color:var(--accent); box-shadow:0 4px 18px rgba(0,0,0,.10);}
+  .compact-search-box{transition:border-color .15s, box-shadow .15s;}
+  .compact-search-box:focus-within{border-color:var(--accent); box-shadow:0 4px 18px rgba(0,0,0,.10);}
   .chat-box input{flex:1; border:none; outline:none; font-size:14px; font-family:inherit; background:transparent; color:var(--text); padding:8px 0;}
   .chat-box input::placeholder{color:#9aa0ab;}
   .chat-send{flex-shrink:0; width:36px; height:36px; border-radius:50%; border:none; background:var(--accent); color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center;}
@@ -131,21 +131,13 @@
 <!-- 빈 상태: 대화창만 노출 -->
 <div id="empty-state" class="empty-state">
   <div class="chat-shell">
-    <div class="chip-row" id="chipRow">
-      <button type="button" class="chip" data-q="아모레퍼시픽 기업사이트를 찾아줘">아모레퍼시픽 기업사이트</button>
-      <button type="button" class="chip" data-q="핀테크 스타트업 사이트를 찾아줘">핀테크 스타트업</button>
-      <button type="button" class="chip" data-q="럭셔리 주얼리 브랜드 사이트를 찾아줘">럭셔리 주얼리 브랜드</button>
-      <button type="button" class="chip" data-q="친환경 소비재 브랜드 사이트를 찾아줘">친환경 소비재 브랜드</button>
-      <button type="button" class="chip" data-q="헬스케어 스타트업 사이트를 찾아줘">헬스케어 스타트업</button>
-      <button type="button" class="chip" data-q="글로벌 물류기업 사이트를 찾아줘">글로벌 물류기업</button>
-    </div>
     <div class="chat-box">
       <input type="text" id="chatInput" placeholder="예: 나이키 런 클럽과 유사한 라이프스타일 경쟁사 사이트를 찾아줘">
       <button class="chat-send" id="chatSendBtn" onclick="searchNewProject()" aria-label="검색">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="8 7 17 7 17 16"></polyline></svg>
       </button>
     </div>
-    <div class="chat-hint">Enter를 누르면 바로 검색돼요 · 위 예시를 눌러도 됩니다</div>
+    <div class="chat-hint">Enter를 누르면 바로 검색돼요</div>
   </div>
   <div class="chat-status" id="searchStatus"></div>
 </div>
