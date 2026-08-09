@@ -1,6 +1,6 @@
 // 무드보드 프론트엔드 로직
 // - 기본 화면은 대화창(빈 상태)만 보여준다. 사용자가 기업명을 입력해서 검색하면
-//   Claude가 Tier 1~3 각 6개(총 18개)를 실시간으로 찾아오고, 그때부터 결과 화면으로 전환된다.
+//   Claude가 Tier 1~3 각 3개(총 9개)를 실시간으로 찾아오고, 그때부터 결과 화면으로 전환된다.
 // - 서버는 상태를 저장하지 않는다(Vercel 등 서버리스 대응). 대신 브라우저 localStorage에
 //   "가장 최근 검색한 프로젝트가 무엇인지" + "그 프로젝트의 데이터"를 저장해서, 새로고침해도
 //   마지막 결과 화면이 유지되게 한다.
@@ -299,7 +299,7 @@ async function requestNewReferences(tier) {
   }
 }
 
-// ===== 대화창 검색: 자유 텍스트로 완전히 새 무드보드(18개)를 생성한다 =====
+// ===== 대화창 검색: 자유 텍스트로 완전히 새 무드보드(9개)를 생성한다 =====
 async function searchNewProject() {
   const { input, button, status } = getActiveControls();
   const query = (input.value || "").trim();
@@ -334,7 +334,7 @@ async function searchNewProject() {
     for (const tier of [1, 2, 3]) {
       const tierTarget = Math.round((tier / 3) * 100);
       const { status: liveStatus } = getActiveControls();
-      liveStatus.textContent = `${parsed.project} - ${tierLabels[tier]} 6개 검색 중... (몇십 초 걸릴 수 있어요)`;
+      liveStatus.textContent = `${parsed.project} - ${tierLabels[tier]} 3개 검색 중... (몇십 초 걸릴 수 있어요)`;
       creepProgressTowards(tierTarget);
       const res = await fetch("/api/generate-tier", {
         method: "POST",
@@ -344,7 +344,7 @@ async function searchNewProject() {
           project: parsed.project,
           genre: parsed.genre,
           tier,
-          count: 6,
+          count: 3,
           excludeNames: allNames,
         }),
       });
@@ -370,7 +370,7 @@ async function searchNewProject() {
     hideProgress();
 
     const { status: finalStatus } = getActiveControls();
-    finalStatus.textContent = `"${parsed.project}" 무드보드 생성 완료 (18개)`;
+    finalStatus.textContent = `"${parsed.project}" 무드보드 생성 완료 (9개)`;
     input.value = "";
   } catch (err) {
     console.error(err);
