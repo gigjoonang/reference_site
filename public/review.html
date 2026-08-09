@@ -438,6 +438,7 @@ let state = {
   meta:{ project:"", worker:"", date:"", confirmer:"" },
   images: [],
   aiFeedback: "",
+  aiFeedbackError: "",
   checks: {}
 };
 
@@ -488,7 +489,15 @@ function handleFilesStage1(files){
   const readers = [...files].filter(f=>f.type.startsWith("image/"));
   readers.forEach(f=>{
     const reader = new FileReader();
-    reader.onload = e=>{ state.images.push(e.target.result); renderThumbsMini(); renderThumbs(); };
+    reader.onload = e=>{
+      state.images.push(e.target.result);
+      // 새 이미지가 첨부되면 이전 분석 결과는 더 이상 유효하지 않으므로 비운다.
+      state.aiFeedback = "";
+      state.aiFeedbackError = "";
+      saveState();
+      renderThumbsMini();
+      renderThumbs();
+    };
     reader.readAsDataURL(f);
   });
 }
@@ -511,13 +520,25 @@ window.addEventListener("paste", e=>{
 });
 
 startBtn.onclick = ()=>{
+  if(!hasApiKey()){
+    openSettingsModal();
+    return;
+  }
   startBtn.disabled = true;
   startBtn.textContent = "분석 중…";
   document.getElementById("scanPlaceholder").style.display = "none";
-  document.getElementById("scanLead").textContent = "첨부한 시안을 위에서 아래로 8개 구간으로 나눠 순서대로 확인하고 있습니다.";
+  document.getElementById("scanLead").textContent = "첨부한 시안을 위에서 아래로 8개 구간으로 나눠 확인하면서, 동시에 AI가 디자인 피드백을 준비합니다.";
   document.getElementById("uploadCard").classList.remove("active-step");
   document.getElementById("processCard").classList.add("active-step");
-  runSliceAnimation(state.images[0]);
+  // 스캔 애니메이션과 동시에 실제 AI 분석을 시작해서, 스캔이 끝나는 시점에 리포트도 준비되게 한다.
+  const analysisPromise = runAiAnalysis().catch(err=>{
+    console.error(err);
+    state.aiFeedback = "";
+    state.aiFeedbackError = err.message || "분석 중 오류가 발생했습니다.";
+    saveState();
+    if(/api[_-]?key/i.test(err.message || "")) openSettingsModal();
+  });
+  runSliceAnimation(state.images[0], analysisPromise);
 };
 
 /* ========== 실제 업로드 이미지를 캔버스로 분할해 스캔 애니메이션 ========== */
@@ -569,14 +590,19 @@ function buildStepListDOM(steps){
   });
 }
 
-function runSliceAnimation(imageDataUrl){
+/* 이미지를 8구간으로 나눠 훑는 시각적 애니메이션과, 실제 AI 분석(analysisPromise)을 동시에
+   진행한다. 애니메이션이 8단계를 다 돌았는데도 아직 실제 분석이 끝나지 않았으면, 분석이 끝날
+   때까지 애니메이션을 계속 반복하며 대기한다 — 즉 "스캔 완료 = 리포트 준비 완료"가 되도록. */
+function runSliceAnimation(imageDataUrl, analysisPromise){
   const status = document.getElementById("processStatus");
   const previewImg = document.getElementById("scanPreviewImg");
   const overlay = document.getElementById("scanOverlay");
   const overlayText = overlay ? overlay.querySelector(".scan-overlay-text") : null;
+  const finish = ()=>{ Promise.resolve(analysisPromise).finally(()=> enterReviewStage()); };
+
   if(!imageDataUrl){
-    status.textContent = "이미지를 불러오지 못했습니다 — 리뷰 툴로 이동합니다.";
-    setTimeout(()=> enterReviewStage(), 800);
+    status.textContent = "이미지를 불러오지 못했습니다 — 분석 결과가 준비되는 대로 이동합니다.";
+    setTimeout(finish, 800);
     return;
   }
   document.getElementById("scanImgWrap").style.display = "block";
@@ -586,21 +612,34 @@ function runSliceAnimation(imageDataUrl){
   status.textContent = "이미지를 나누는 중…";
   sliceImageIntoSteps(imageDataUrl, NUM_STEPS, steps=>{
     if(steps.length === 0){
-      status.textContent = "분석 실패 — 리뷰 툴로 이동합니다.";
+      status.textContent = "분석 실패 — 분석 결과가 준비되는 대로 이동합니다.";
       if(overlay) overlay.classList.remove("visible");
-      setTimeout(()=> enterReviewStage(), 800);
+      setTimeout(finish, 800);
       return;
     }
     buildStepListDOM(steps);
     const items = document.querySelectorAll(".step-item");
+
+    let settled = false;
+    Promise.resolve(analysisPromise).finally(()=>{ settled = true; });
+
     let i = 0;
     function next(){
       if(i > 0) items[i-1].classList.remove("active");
       if(i >= items.length){
-        status.textContent = "스캔 완료 — 리뷰 툴로 이동합니다";
-        if(overlayText) overlayText.textContent = "스캔 완료";
+        if(!settled){
+          // 스캔은 다 돌았지만 실제 AI 분석이 아직 안 끝났다 — 처음부터 다시 훑으며 계속 대기한다.
+          items.forEach(el=> el.classList.remove("done"));
+          i = 0;
+          if(overlayText) overlayText.textContent = "AI가 디자인 피드백을 정리하는 중입니다...";
+          status.textContent = "AI 분석 마무리 중… 조금만 더 기다려주세요";
+          setTimeout(next, 450);
+          return;
+        }
+        status.textContent = "스캔 및 AI 분석 완료 — 리뷰 툴로 이동합니다";
+        if(overlayText) overlayText.textContent = "완료";
         if(overlay) overlay.classList.remove("visible");
-        setTimeout(()=> enterReviewStage(), 700);
+        setTimeout(finish, 500);
         return;
       }
       items[i].classList.add("active");
@@ -779,7 +818,12 @@ function renderThumbs(){
     const t = document.createElement("div");
     t.className = "thumb";
     t.innerHTML = `<img src="${src}"><button data-i="${i}">✕</button>`;
-    t.querySelector("button").onclick = ()=>{ state.images.splice(i,1); renderThumbs(); renderThumbsMini(); };
+    t.querySelector("button").onclick = ()=>{
+      state.images.splice(i,1);
+      invalidateAnalysis();
+      renderThumbs();
+      renderThumbsMini();
+    };
     thumbsEl.appendChild(t);
   });
 }
@@ -787,9 +831,31 @@ function handleFilesStage3(files){
   [...files].forEach(f=>{
     if(!f.type.startsWith("image/")) return;
     const reader = new FileReader();
-    reader.onload = e=>{ state.images.push(e.target.result); renderThumbs(); renderThumbsMini(); };
+    reader.onload = e=>{
+      state.images.push(e.target.result);
+      invalidateAnalysis();
+      renderThumbs();
+      renderThumbsMini();
+    };
     reader.readAsDataURL(f);
   });
+}
+
+/* 시안 이미지가 바뀌면(추가/삭제) 이전 AI 분석 결과는 더 이상 유효하지 않으므로 비우고,
+   이미 리뷰 화면에 들어와 있다면(=이전에 분석을 완료한 상태라면) 새 이미지 기준으로
+   자동으로 다시 분석한다. 여러 장을 연달아 추가해도 한 번만 재분석하도록 살짝 지연시킨다. */
+let reanalyzeDebounceTimer = null;
+function invalidateAnalysis(){
+  const hadFeedback = !!state.aiFeedback;
+  state.aiFeedback = "";
+  state.aiFeedbackError = "";
+  saveState();
+  if(!hadFeedback) return;
+  clearTimeout(reanalyzeDebounceTimer);
+  reanalyzeDebounceTimer = setTimeout(()=>{
+    if(state.images.length > 0) requestAiFeedback();
+    else renderAnnotations([]);
+  }, 500);
 }
 dropzone2.onclick = ()=> fileInput2.click();
 fileInput2.onchange = e=> handleFilesStage3(e.target.files);
@@ -801,40 +867,43 @@ dropzone2.addEventListener("drop", e=>{ handleFilesStage3(e.dataTransfer.files);
 /* AI 프롬프트 */
 function buildCriteriaPrompt(){
   const criteriaText = CATEGORIES.map(c=> `- ${c.title}: ${c.items.join(" / ")}`).join("\n");
-  return `첨부된 이미지는 AI로 생성한 기업사이트 제안 시안입니다. 다음 기준으로 냉정하게 검토하고, 카테고리별로 잘된 점과 개선이 필요한 점을 구체적으로 지적해주세요. 특히 "미흡" 수준의 문제는 왜 문제인지와 함께 짚어주세요. 제목/본문 등 텍스트 위계가 명확한지, 폰트·여백·정렬이 화면 전체에서 일관되는지, 시안 전반의 균형감·통일감은 어떤지도 반드시 짚어주세요.
+  return `첨부된 이미지는 AI로 생성한 기업사이트 제안 시안입니다. 다음 기준으로 냉정하게 검토하고, 카테고리별로 잘된 점과 개선이 필요한 점을 구체적으로 지적해주세요.
 
 [검토 기준]
 ${criteriaText}
 
-[설득력 — 매우 중요]
-막연한 주관적 의견("좋아 보인다", "아쉽다")만 나열하지 마세요. web_search 툴을 적극 사용해서 아래처럼 실제 근거를 찾아 구체적인 수치·원칙과 함께 지적해주세요.
+[정직함 — 매우 중요]
+실제로 존재하는 문제만 지적하세요. 지적할 거리를 채우려고 사소하거나 억지스러운 트집을 만들어내지 마세요. 시안이 이미 잘 만들어졌다면 그렇다고 솔직하게 말하고, 지적 사항이 적거나 아예 없어도 괜찮습니다. 개수를 채우는 것보다 정확함이 훨씬 중요합니다.
+
+[설득력 — 지적할 문제가 있을 때]
+막연한 주관적 의견("좋아 보인다", "아쉽다")만 나열하지 마세요. 실제 문제가 있다면, web_search 툴로 아래처럼 근거를 찾아 구체적인 수치·원칙과 함께 지적해주세요.
 - Nielsen Norman Group, Baymard Institute 같은 UX 리서치 기관의 연구 결과나 원칙
 - W3C/WCAG의 접근성·색상 대비 기준(예: 본문 텍스트 대비율 4.5:1 이상)
 - 아이트래킹 연구(F자형/Z자형 시선 흐름 등), 폼/CTA 전환율 관련 벤치마크 데이터
 - Google Material Design, Apple HIG 등 주요 디자인 시스템의 가이드라인
 근거를 찾았으면 "OOO 연구에 따르면", "WCAG 기준상" 처럼 출처를 밝히고, 그 기준과 시안을 직접 비교해서 왜 문제인지 설명하세요. 검색으로 못 찾은 항목은 디자인 원칙(그리드 시스템, 게슈탈트 원리 등) 이름을 근거로 명확히 설명하세요.
 
-[좌표 정확도 — 매우 중요]
+[좌표 정확도 — 지적할 문제가 있을 때]
 이미지 위에 표시할 위치(top/left)는 반드시 이미지를 세로 10등분, 가로 10등분한 격자를 상상하며, 문제가 있는 요소가 그 격자의 몇 번째 칸에 걸쳐 있는지 실제로 관찰한 뒤 그 칸의 중심 좌표로 계산하세요. 어림짐작하지 말고, 요소의 실제 테두리(버튼, 텍스트 블록, 이미지 영역 등)를 기준으로 삼아 최대한 정확하게 추정하세요.
 
 [요청 형식]
-1) 카테고리별 한줄평
-2) 반드시 수정이 필요한 항목 (우선순위 순, 가능한 곳마다 위 근거 데이터 인용)
-3) 컨펌자에게 보고하기 전에 확인하면 좋을 질문 리스트
-4) 위 1)~3)에서 언급한 문제들 중 이미지 위에 위치를 표시할 수 있는 항목을, 아래 형식 그대로 별도 블록으로 추가해주세요. 이 블록은 도구가 자동으로 파싱하니 형식을 반드시 지켜주세요.
-   - 텍스트/타이포그래피 이슈에만 치우치지 마세요. 아래 관점들을 골고루 섞어서, 서로 다른 카테고리에서 최소 5개 이상 짚어주세요.
+1) 카테고리별 한줄평 (좋으면 좋다고, 짧아도 됩니다)
+2) 실제로 수정이 필요한 항목만, 우선순위 순으로 (없으면 "특별한 수정 사항 없음"이라고만 쓰세요)
+3) 컨펌자에게 보고하기 전에 확인하면 좋을 질문 리스트 (없으면 생략 가능)
+4) 위 2)에서 언급한 실제 문제들 중 이미지 위에 위치를 표시할 수 있는 항목을, 아래 형식 그대로 별도 블록으로 추가해주세요. 이 블록은 도구가 자동으로 파싱하니 형식을 반드시 지켜주세요.
+   - 실제 문제가 여러 개라면, 텍스트/타이포그래피에만 치우치지 말고 아래 관점들을 골고루 살펴서 짚어주세요(단, 억지로 채우지는 마세요):
      [레이아웃] 그리드/정렬/여백 불균형, [색상] 색상 대비·팔레트 일관성, [이미지] 사진·아이콘 퀄리티와 스타일 통일감,
-     [위계] 정보 우선순위와 시선 흐름, [브랜드] 로고·톤앤매너 일치 여부, [UX] CTA 위치·클릭 유도력·내비게이션,
-     [타이포] 텍스트 위계와 폰트 일관성 (다른 카테고리와 균형 있게 1~2개만)
+     [위계] 정보 우선순위와 시선 흐름, [브랜드] 로고·톤앤매너 일치 여부, [UX] CTA 위치·클릭 유도력·내비게이션, [타이포] 텍스트 위계와 폰트 일관성
    - 각 항목의 "제목" 앞에 위 대괄호 카테고리 태그를 반드시 붙여주세요. 예: "[레이아웃] 우측 여백 불균형"
    - "설명"에는 가능하면 근거(연구/기준/원칙 이름)를 한 문장 안에 포함해주세요.
    - top/left는 위 [좌표 정확도] 지침대로 격자를 기준 삼아 추정한, 0~100 사이 백분율 값입니다.
    - level은 bad(반드시 수정) 또는 warn(보완 필요) 중 하나입니다.
+   - 실제로 지적할 문제가 하나도 없으면, MARK 줄 없이 바로 ---END---를 쓰세요. 없는 문제를 지어내지 마세요.
 
 ---ANNOTATIONS---
 MARK: top=0.0 left=50 level=bad | [레이아웃] 제목 | 설명(근거 포함)
 MARK: top=0.0 left=50 level=warn | [색상] 제목 | 설명(근거 포함)
-(문제 항목 수만큼, 카테고리를 섞어서 반복)
+(실제 문제 개수만큼만 반복 — 문제가 없으면 이 줄들 없이 바로 아래로)
 ---END---`;
 }
 
@@ -874,7 +943,9 @@ function renderAnnotations(items){
   if(items.length === 0){
     contentEl.style.display = "none";
     emptyEl.style.display = "block";
-    emptyEl.textContent = "분석 결과에서 위치 태그를 찾지 못했습니다. 아래 '다시 분석하기'를 눌러보세요.";
+    emptyEl.textContent = state.aiFeedback
+      ? "AI가 특별히 짚을 문제를 찾지 못했습니다 — 시안이 전반적으로 양호한 것 같아요. (문제를 억지로 만들어내지 않도록 설정되어 있어요)"
+      : "먼저 시안 이미지를 첨부해주세요.";
     return;
   }
   emptyEl.style.display = "none";
@@ -950,6 +1021,12 @@ function bindAnnotationControls(){
   document.getElementById("reanalyzeBtn").onclick = requestAiFeedback;
   if(state.aiFeedback){
     runAnnotationParse();
+  } else if(state.aiFeedbackError){
+    document.getElementById("annotLoading").style.display = "none";
+    document.getElementById("annotContent").style.display = "none";
+    const emptyEl = document.getElementById("annotEmpty");
+    emptyEl.style.display = "block";
+    emptyEl.textContent = "오류: " + state.aiFeedbackError;
   } else {
     requestAiFeedback();
   }
@@ -977,6 +1054,24 @@ function resizeImageForApi(dataUrl, maxWidth, quality){
 
 /* 리뷰 단계 진입 시 자동으로(또는 "다시 분석하기" 클릭 시) Claude Vision을 호출해서
    디자인 관점의 피드백을 받아오고, 결과를 이미지 주석 리포트로 바로 렌더링한다. */
+/* 실제 Claude Vision 호출만 담당하는 순수 함수 (DOM 로딩/에러 표시는 건드리지 않는다).
+   성공하면 state.aiFeedback을 채우고 그 텍스트를 반환, 실패하면 예외를 던진다.
+   startBtn(스캔과 동시 진행)과 requestAiFeedback(버튼/자동 재분석) 양쪽에서 공용으로 쓴다. */
+async function runAiAnalysis(){
+  const resizedImages = await Promise.all(state.images.map(src => resizeImageForApi(src)));
+  const res = await fetch("/api/review-feedback", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ apiKey: getApiKey(), images: resizedImages, criteriaPrompt: buildCriteriaPrompt() })
+  });
+  const body = await res.json();
+  if(!res.ok) throw new Error(body.error || "피드백을 받지 못했습니다.");
+  state.aiFeedback = body.feedback;
+  state.aiFeedbackError = "";
+  saveState();
+  return body.feedback;
+}
+
 async function requestAiFeedback(){
   const btn = document.getElementById("reanalyzeBtn");
   const status = document.getElementById("feedbackStatus");
@@ -1006,20 +1101,13 @@ async function requestAiFeedback(){
   loadingEl.textContent = "AI가 시안을 디자인 관점에서 분석하는 중입니다... 관련 데이터/리서치도 함께 찾고 있어요 (1분 정도 걸릴 수 있어요)";
 
   try{
-    const resizedImages = await Promise.all(state.images.map(src => resizeImageForApi(src)));
-    const res = await fetch("/api/review-feedback", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ apiKey: getApiKey(), images: resizedImages, criteriaPrompt: buildCriteriaPrompt() })
-    });
-    const body = await res.json();
-    if(!res.ok) throw new Error(body.error || "피드백을 받지 못했습니다.");
-
-    state.aiFeedback = body.feedback;
-    saveState();
+    await runAiAnalysis();
     runAnnotationParse();
   }catch(err){
     console.error(err);
+    state.aiFeedback = "";
+    state.aiFeedbackError = err.message || "분석 중 오류가 발생했습니다.";
+    saveState();
     loadingEl.style.display = "none";
     emptyEl.style.display = "block";
     emptyEl.textContent = "오류: " + err.message;
@@ -1034,7 +1122,7 @@ function bindResetButton(){
   document.getElementById("resetBtn").onclick = ()=>{
     if(!confirm("모든 입력 내용을 초기화하고 처음 화면으로 돌아갈까요?")) return;
     localStorage.removeItem(STORAGE_KEY);
-    state = { meta:{project:"",worker:"",date:"",confirmer:""}, images:[], aiFeedback:"", checks:{} };
+    state = { meta:{project:"",worker:"",date:"",confirmer:""}, images:[], aiFeedback:"", aiFeedbackError:"", checks:{} };
     renderThumbsMini();
     document.getElementById("scanImgWrap").style.display = "none";
     document.getElementById("scanPlaceholder").style.display = "block";
