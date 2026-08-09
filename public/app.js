@@ -293,14 +293,6 @@ document.addEventListener("DOMContentLoaded", () => {
       if (e.key === "Enter") searchNewProject();
     });
   }
-  document.querySelectorAll(".chip").forEach((chip) => {
-    chip.addEventListener("click", () => {
-      const q = chip.dataset.q;
-      const input = document.getElementById("chatInput");
-      input.value = q;
-      searchNewProject();
-    });
-  });
 });
 
 loadData().catch((err) => {
