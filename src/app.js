@@ -62,6 +62,15 @@ const WEB_SEARCH_TOOL = {
   allowed_domains: ["awwwards.com", "cssdesignawards.com", "gdweb.co.kr"],
 };
 
+// 1차 컨펌 리뷰(디자인 피드백)용 웹서치 툴. 특정 사이트로 제한하지 않고,
+// UX/디자인 리서치 기관(Nielsen Norman Group, Baymard Institute, W3C 등)이나
+// 업계 데이터를 자유롭게 찾아 피드백의 근거로 인용할 수 있게 한다.
+const REVIEW_WEB_SEARCH_TOOL = {
+  type: "web_search_20250305",
+  name: "web_search",
+  max_uses: 4,
+};
+
 const TIER_SPEC = {
   1: {
     label: "Tier 1 — 평범한 레이아웃",
@@ -301,7 +310,8 @@ app.post("/api/review-feedback", async (req, res) => {
 
     const response = await client.messages.create({
       model: MODEL,
-      max_tokens: 4096,
+      max_tokens: 6000,
+      tools: [REVIEW_WEB_SEARCH_TOOL],
       messages: [
         {
           role: "user",

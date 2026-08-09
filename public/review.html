@@ -307,39 +307,35 @@
       <div class="thumbs" id="thumbs"></div>
     </section>
 
-    <section class="card">
-      <h2><span class="num">2</span> AI 피드백 받기</h2>
-      <div class="overall-text" style="display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap;">
-        <p style="margin:0; flex:1 1 320px;">버튼을 누르면 이 사이트에서 바로 Claude가 첨부한 시안을 분석해서 피드백을 보여줍니다. 텍스트 위계, 폰트/여백의 일관성, 시안 전체의 균형감·통일감까지 함께 짚어드려요.</p>
-        <div class="btn-row" style="margin:0; flex-shrink:0;">
-          <button class="btn secondary" id="getFeedbackBtn">AI 피드백 받기</button>
-          <span id="feedbackStatus" style="font-size:12.5px; color:var(--sub);"></span>
-        </div>
-      </div>
-      <div class="field" id="aiFeedbackWrap" style="margin-top:14px; display:none;">
-        <label>AI 피드백 (자동 생성됨 · 필요하면 직접 고쳐도 됩니다)</label>
-        <textarea id="aiFeedback" style="min-height:180px;"></textarea>
-      </div>
-    </section>
+    <section class="card" id="annotSection">
+      <h2><span class="num">2</span> 이미지 주석 리포트</h2>
+      <p class="desc">Claude가 첨부한 시안을 디자인 관점에서 분석해 이미지 위에 번호로 표시합니다. 번호를 클릭하면 오른쪽 설명이, 설명을 클릭하면 이미지 위 번호가 강조됩니다.</p>
 
-    <section class="card" id="annotSection" style="display:none;">
-      <h2><span class="num">3</span> 이미지 주석 리포트</h2>
-      <p class="desc">AI 피드백에 포함된 위치 태그를 이미지 위에 번호로 표시합니다. 번호를 클릭하면 오른쪽 설명이, 설명을 클릭하면 이미지 위 번호가 강조됩니다. <span id="annotStatus" style="color:var(--sub);"></span></p>
-      <div class="legend">
-        <span><span class="dot bad"></span> 미흡</span>
-        <span><span class="dot warn"></span> 보완 필요</span>
-      </div>
-      <div class="annot-layout">
-        <div class="annot-img-pane">
-          <div class="annot-img-wrap" id="annotImgWrap"></div>
+      <div id="annotLoading" class="scan-placeholder" style="display:none;">AI가 시안을 분석하는 중입니다... (몇십 초 걸릴 수 있어요)</div>
+      <div id="annotEmpty" class="scan-placeholder" style="display:none;"></div>
+
+      <div id="annotContent" style="display:none;">
+        <div class="legend">
+          <span><span class="dot bad"></span> 미흡</span>
+          <span><span class="dot warn"></span> 보완 필요</span>
         </div>
-        <div class="annot-list-pane" id="annotListPane"></div>
+        <div class="annot-layout">
+          <div class="annot-img-pane">
+            <div class="annot-img-wrap" id="annotImgWrap"></div>
+          </div>
+          <div class="annot-list-pane" id="annotListPane"></div>
+        </div>
+      </div>
+
+      <div class="btn-row" style="margin-top:14px;">
+        <button class="btn ghost" id="reanalyzeBtn" type="button">다시 분석하기</button>
+        <span id="feedbackStatus" style="font-size:12.5px; color:var(--sub);"></span>
       </div>
     </section>
 
     <section class="card">
       <details id="checklistDetails">
-        <summary class="card-summary"><span class="num">4</span> 자가 체크리스트 <span class="optional-tag">선택사항 · 펼쳐서 진행</span><span class="chevron"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span></summary>
+        <summary class="card-summary"><span class="num">3</span> 자가 체크리스트 <span class="optional-tag">선택사항 · 펼쳐서 진행</span><span class="chevron"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span></summary>
         <div class="details-body">
           <p class="desc">항목별로 상태를 선택하세요. <b style="color:var(--good)">양호</b> / <b style="color:var(--warn)">보완필요</b> / <b style="color:var(--bad)">미흡</b> · 코멘트는 선택 입력입니다.</p>
           <div id="checklist"></div>
@@ -348,7 +344,7 @@
     </section>
 
     <section class="card">
-      <h2><span class="num">5</span> 종합 의견</h2>
+      <h2><span class="num">4</span> 종합 의견</h2>
       <p class="desc">자가 체크리스트를 체크하면 아래 결과와 의견이 자동으로 갱신됩니다.</p>
       <div class="summary-bar" id="summaryBar"></div>
       <div class="flags" id="flags"></div>
@@ -810,22 +806,34 @@ function buildCriteriaPrompt(){
 [검토 기준]
 ${criteriaText}
 
+[설득력 — 매우 중요]
+막연한 주관적 의견("좋아 보인다", "아쉽다")만 나열하지 마세요. web_search 툴을 적극 사용해서 아래처럼 실제 근거를 찾아 구체적인 수치·원칙과 함께 지적해주세요.
+- Nielsen Norman Group, Baymard Institute 같은 UX 리서치 기관의 연구 결과나 원칙
+- W3C/WCAG의 접근성·색상 대비 기준(예: 본문 텍스트 대비율 4.5:1 이상)
+- 아이트래킹 연구(F자형/Z자형 시선 흐름 등), 폼/CTA 전환율 관련 벤치마크 데이터
+- Google Material Design, Apple HIG 등 주요 디자인 시스템의 가이드라인
+근거를 찾았으면 "OOO 연구에 따르면", "WCAG 기준상" 처럼 출처를 밝히고, 그 기준과 시안을 직접 비교해서 왜 문제인지 설명하세요. 검색으로 못 찾은 항목은 디자인 원칙(그리드 시스템, 게슈탈트 원리 등) 이름을 근거로 명확히 설명하세요.
+
+[좌표 정확도 — 매우 중요]
+이미지 위에 표시할 위치(top/left)는 반드시 이미지를 세로 10등분, 가로 10등분한 격자를 상상하며, 문제가 있는 요소가 그 격자의 몇 번째 칸에 걸쳐 있는지 실제로 관찰한 뒤 그 칸의 중심 좌표로 계산하세요. 어림짐작하지 말고, 요소의 실제 테두리(버튼, 텍스트 블록, 이미지 영역 등)를 기준으로 삼아 최대한 정확하게 추정하세요.
+
 [요청 형식]
 1) 카테고리별 한줄평
-2) 반드시 수정이 필요한 항목 (우선순위 순)
+2) 반드시 수정이 필요한 항목 (우선순위 순, 가능한 곳마다 위 근거 데이터 인용)
 3) 컨펌자에게 보고하기 전에 확인하면 좋을 질문 리스트
 4) 위 1)~3)에서 언급한 문제들 중 이미지 위에 위치를 표시할 수 있는 항목을, 아래 형식 그대로 별도 블록으로 추가해주세요. 이 블록은 도구가 자동으로 파싱하니 형식을 반드시 지켜주세요.
-   - 매우 중요: 텍스트/타이포그래피 이슈에만 치우치지 마세요. 아래 관점들을 골고루 섞어서, 서로 다른 카테고리에서 최소 5개 이상 짚어주세요.
+   - 텍스트/타이포그래피 이슈에만 치우치지 마세요. 아래 관점들을 골고루 섞어서, 서로 다른 카테고리에서 최소 5개 이상 짚어주세요.
      [레이아웃] 그리드/정렬/여백 불균형, [색상] 색상 대비·팔레트 일관성, [이미지] 사진·아이콘 퀄리티와 스타일 통일감,
      [위계] 정보 우선순위와 시선 흐름, [브랜드] 로고·톤앤매너 일치 여부, [UX] CTA 위치·클릭 유도력·내비게이션,
      [타이포] 텍스트 위계와 폰트 일관성 (다른 카테고리와 균형 있게 1~2개만)
    - 각 항목의 "제목" 앞에 위 대괄호 카테고리 태그를 반드시 붙여주세요. 예: "[레이아웃] 우측 여백 불균형"
-   - top/left는 이미지 전체 기준 위에서부터, 왼쪽에서부터의 위치를 0~100 사이 백분율로 추정한 값입니다.
+   - "설명"에는 가능하면 근거(연구/기준/원칙 이름)를 한 문장 안에 포함해주세요.
+   - top/left는 위 [좌표 정확도] 지침대로 격자를 기준 삼아 추정한, 0~100 사이 백분율 값입니다.
    - level은 bad(반드시 수정) 또는 warn(보완 필요) 중 하나입니다.
 
 ---ANNOTATIONS---
-MARK: top=0.0 left=50 level=bad | [레이아웃] 제목 | 설명
-MARK: top=0.0 left=50 level=warn | [색상] 제목 | 설명
+MARK: top=0.0 left=50 level=bad | [레이아웃] 제목 | 설명(근거 포함)
+MARK: top=0.0 left=50 level=warn | [색상] 제목 | 설명(근거 포함)
 (문제 항목 수만큼, 카테고리를 섞어서 반복)
 ---END---`;
 }
@@ -849,18 +857,28 @@ function parseAnnotations(text){
 }
 
 function renderAnnotations(items){
-  const section = document.getElementById("annotSection");
+  const loadingEl = document.getElementById("annotLoading");
+  const emptyEl = document.getElementById("annotEmpty");
+  const contentEl = document.getElementById("annotContent");
   const imgWrap = document.getElementById("annotImgWrap");
   const listPane = document.getElementById("annotListPane");
-  const status = document.getElementById("annotStatus");
 
-  if(items.length === 0 || state.images.length === 0){
-    section.style.display = "none";
-    status.textContent = items.length === 0
-      ? "AI 응답에서 위치 태그(MARK:)를 찾지 못했습니다. 잠시 후 'AI 피드백 받기'를 다시 눌러보세요."
-      : "이미지를 먼저 첨부해주세요.";
+  loadingEl.style.display = "none";
+
+  if(state.images.length === 0){
+    contentEl.style.display = "none";
+    emptyEl.style.display = "block";
+    emptyEl.textContent = "먼저 시안 이미지를 첨부해주세요.";
     return;
   }
+  if(items.length === 0){
+    contentEl.style.display = "none";
+    emptyEl.style.display = "block";
+    emptyEl.textContent = "분석 결과에서 위치 태그를 찾지 못했습니다. 아래 '다시 분석하기'를 눌러보세요.";
+    return;
+  }
+  emptyEl.style.display = "none";
+  contentEl.style.display = "block";
 
   imgWrap.innerHTML = `<img src="${state.images[0]}" alt="검토 이미지">` +
     items.map((it,i)=> `<button class="pin ${it.level}" style="top:${it.top}%; left:${it.left}%;" data-n="${i}" title="${i+1}. ${it.title}">${i+1}</button>`).join("");
@@ -895,8 +913,7 @@ function renderAnnotations(items){
     });
   });
 
-  section.style.display = "block";
-  status.textContent = `${items.length}개 위치 표시 완료 ✓`;
+  document.getElementById("feedbackStatus").textContent = `${items.length}개 항목 표시 완료 ✓`;
   setupScrollSpy();
   setupAnnotScrollSpy();
 }
@@ -923,26 +940,25 @@ function setupAnnotScrollSpy(){
 }
 
 function runAnnotationParse(){
-  const text = document.getElementById("aiFeedback").value;
-  const items = parseAnnotations(text);
+  const items = parseAnnotations(state.aiFeedback || "");
   renderAnnotations(items);
 }
 
-function bindAIFeedback(){
-  document.getElementById("aiFeedback").value = state.aiFeedback || "";
-  document.getElementById("aiFeedback").oninput = e=>{ state.aiFeedback = e.target.value; saveState(); };
-  document.getElementById("aiFeedback").addEventListener("change", runAnnotationParse);
+/* 이미지 주석 리포트 초기화: 캐시된 분석 결과가 있으면 바로 보여주고,
+   없으면(첫 방문) 버튼 클릭 없이 자동으로 분석을 시작한다. */
+function bindAnnotationControls(){
+  document.getElementById("reanalyzeBtn").onclick = requestAiFeedback;
   if(state.aiFeedback){
-    document.getElementById("aiFeedbackWrap").style.display = "block";
     runAnnotationParse();
+  } else {
+    requestAiFeedback();
   }
-  document.getElementById("getFeedbackBtn").onclick = requestAiFeedback;
 }
 
 /* 업로드된 이미지를 API로 보내기 전에 적당한 크기로 줄인다 (전송 용량 절약) */
 function resizeImageForApi(dataUrl, maxWidth, quality){
-  maxWidth = maxWidth || 1400;
-  quality = quality || 0.85;
+  maxWidth = maxWidth || 1568;
+  quality = quality || 0.9;
   return new Promise(resolve=>{
     const img = new Image();
     img.onload = ()=>{
@@ -959,13 +975,20 @@ function resizeImageForApi(dataUrl, maxWidth, quality){
   });
 }
 
-/* "AI 피드백 받기" 버튼: 이 사이트에서 바로 Claude Vision을 호출해서 피드백을 받아온다 */
+/* 리뷰 단계 진입 시 자동으로(또는 "다시 분석하기" 클릭 시) Claude Vision을 호출해서
+   디자인 관점의 피드백을 받아오고, 결과를 이미지 주석 리포트로 바로 렌더링한다. */
 async function requestAiFeedback(){
-  const btn = document.getElementById("getFeedbackBtn");
+  const btn = document.getElementById("reanalyzeBtn");
   const status = document.getElementById("feedbackStatus");
+  const loadingEl = document.getElementById("annotLoading");
+  const emptyEl = document.getElementById("annotEmpty");
+  const contentEl = document.getElementById("annotContent");
 
   if(state.images.length === 0){
-    status.textContent = "먼저 시안 이미지를 첨부해주세요.";
+    loadingEl.style.display = "none";
+    contentEl.style.display = "none";
+    emptyEl.style.display = "block";
+    emptyEl.textContent = "먼저 시안 이미지를 첨부해주세요.";
     return;
   }
 
@@ -976,7 +999,11 @@ async function requestAiFeedback(){
   }
 
   btn.disabled = true;
-  status.textContent = "AI가 시안을 분석하는 중입니다... (몇십 초 걸릴 수 있어요)";
+  status.textContent = "";
+  emptyEl.style.display = "none";
+  contentEl.style.display = "none";
+  loadingEl.style.display = "block";
+  loadingEl.textContent = "AI가 시안을 디자인 관점에서 분석하는 중입니다... 관련 데이터/리서치도 함께 찾고 있어요 (1분 정도 걸릴 수 있어요)";
 
   try{
     const resizedImages = await Promise.all(state.images.map(src => resizeImageForApi(src)));
@@ -990,13 +1017,13 @@ async function requestAiFeedback(){
 
     state.aiFeedback = body.feedback;
     saveState();
-    document.getElementById("aiFeedback").value = body.feedback;
-    document.getElementById("aiFeedbackWrap").style.display = "block";
     runAnnotationParse();
-    status.textContent = "피드백 생성 완료 ✓";
   }catch(err){
     console.error(err);
-    status.textContent = "오류: " + err.message;
+    loadingEl.style.display = "none";
+    emptyEl.style.display = "block";
+    emptyEl.textContent = "오류: " + err.message;
+    status.textContent = "오류가 발생했습니다.";
     if(/api[_-]?key/i.test(err.message)) openSettingsModal();
   }finally{
     btn.disabled = false;
@@ -1014,10 +1041,9 @@ function bindResetButton(){
     document.getElementById("scanLead").textContent = "이미지를 첨부하고 '분석 시작하기'를 누르면 여기서 스캔 과정을 확인할 수 있습니다.";
     document.getElementById("stepList").innerHTML = "";
     document.getElementById("processStatus").textContent = "";
-    document.getElementById("annotSection").style.display = "none";
-    document.getElementById("annotStatus").textContent = "";
-    document.getElementById("aiFeedbackWrap").style.display = "none";
-    document.getElementById("aiFeedback").value = "";
+    document.getElementById("annotLoading").style.display = "none";
+    document.getElementById("annotEmpty").style.display = "none";
+    document.getElementById("annotContent").style.display = "none";
     document.getElementById("feedbackStatus").textContent = "";
     document.getElementById("processCard").classList.remove("active-step");
     document.getElementById("uploadCard").classList.add("active-step");
@@ -1043,7 +1069,7 @@ function setupScrollSpy(){
 }
 
 function initReview(){
-  bindAIFeedback();
+  bindAnnotationControls();
   bindResetButton();
   renderThumbs();
   buildChecklistDOM();
