@@ -61,6 +61,56 @@ function clearApiKey() {
   status.className = "modal-status ok";
 }
 
+// ===== 진행률(%) 표시 =====
+// 실제 응답이 언제 끝날지는 알 수 없어서, 목표치(target)를 향해 서서히 다가가는
+// 방식으로 표시한다. Tier가 완료될 때마다 setProgress()로 실제 지점으로 스냅한다.
+let progressPct = 0;
+let progressTimer = null;
+function progressEls() {
+  return {
+    wraps: document.querySelectorAll(".progress-wrap"),
+    fills: document.querySelectorAll(".progress-fill"),
+    pcts: document.querySelectorAll(".progress-pct"),
+  };
+}
+function renderProgress() {
+  const { fills, pcts } = progressEls();
+  const rounded = Math.round(progressPct);
+  fills.forEach((el) => { el.style.width = rounded + "%"; });
+  pcts.forEach((el) => { el.textContent = rounded + "%"; });
+}
+function showProgress() {
+  progressPct = 0;
+  progressEls().wraps.forEach((el) => { el.style.display = "flex"; });
+  renderProgress();
+}
+function setProgress(pct) {
+  progressPct = Math.max(progressPct, pct);
+  renderProgress();
+}
+// target을 향해 서서히(감속하며) 다가간다. 실제 완료 시점은 알 수 없으므로
+// target에 딱 도달하지는 않고 근처(약 92%)에서 멈춰 "아직 진행 중"임을 보여준다.
+function creepProgressTowards(target) {
+  clearInterval(progressTimer);
+  progressTimer = setInterval(() => {
+    const ceiling = target - 2;
+    if (progressPct < ceiling) {
+      progressPct += (ceiling - progressPct) * 0.06 + 0.3;
+      renderProgress();
+    }
+  }, 250);
+}
+function hideProgress() {
+  clearInterval(progressTimer);
+  progressPct = 100;
+  renderProgress();
+  setTimeout(() => {
+    progressEls().wraps.forEach((el) => { el.style.display = "none"; });
+    progressPct = 0;
+    renderProgress();
+  }, 400);
+}
+
 function storageKeyFor(project) {
   return "moodboard_state_" + (project || "default").replace(/\s+/g, "_");
 }
@@ -167,15 +217,15 @@ function renderCard(ref, tier) {
     .join("");
 
   card.innerHTML = `
-    <a class="thumb-link" href="${escapeAttr(ref.url)}" target="_blank" rel="noopener">
-      <img class="thumb" src="${escapeAttr(ref.image)}" alt="${escapeAttr(ref.name)}">
-      <label class="exclude-toggle" onclick="event.stopPropagation()">
-        <input type="checkbox" ${isMarked ? "checked" : ""} onchange="toggleExclude(${tier}, '${escapeJs(ref.name)}', this.checked)">
-        제외
-      </label>
-    </a>
     <div class="body">
-      <h3><a href="${escapeAttr(ref.url)}" target="_blank" rel="noopener">${escapeHtml(ref.name)}</a></h3>
+      <div class="ref-card-head">
+        <h3><a href="${escapeAttr(ref.url)}" target="_blank" rel="noopener">${escapeHtml(ref.name)}</a></h3>
+        <label class="exclude-toggle" onclick="event.stopPropagation()">
+          <input type="checkbox" ${isMarked ? "checked" : ""} onchange="toggleExclude(${tier}, '${escapeJs(ref.name)}', this.checked)">
+          제외
+        </label>
+      </div>
+      ${ref.source ? `<p class="source">${escapeHtml(ref.source)}</p>` : ""}
       <div class="tags">${tagsHtml}</div>
       <p class="reason">${escapeHtml(ref.reason || "")}</p>
     </div>
@@ -210,6 +260,8 @@ async function requestNewReferences(tier) {
   const statusEl = document.getElementById(`status-${tier}`);
   btn.disabled = true;
   statusEl.textContent = `Claude가 ${names.length}개 레퍼런스를 재검색 중입니다... (몇십 초 걸릴 수 있어요)`;
+  showProgress();
+  creepProgressTowards(96);
 
   try {
     currentData.references.forEach((r) => {
@@ -237,11 +289,13 @@ async function requestNewReferences(tier) {
     excludedSelection[tier].clear();
     render();
     statusEl.textContent = `${body.added.length}개 교체 완료`;
+    hideProgress();
   } catch (err) {
     console.error(err);
     statusEl.textContent = "오류: " + err.message;
     if (/api[_-]?key/i.test(err.message)) openSettingsModal();
     btn.disabled = false;
+    hideProgress();
   }
 }
 
@@ -261,6 +315,8 @@ async function searchNewProject() {
   button.disabled = true;
   input.disabled = true;
   status.textContent = "요청을 분석하는 중...";
+  showProgress();
+  creepProgressTowards(10);
 
   try {
     const parseRes = await fetch("/api/parse-query", {
@@ -276,7 +332,10 @@ async function searchNewProject() {
 
     const tierLabels = { 1: "Tier 1 (평범한 레이아웃)", 2: "Tier 2 (트렌디하지만 정돈된 레이아웃)", 3: "Tier 3 (과감한 인터랙션)" };
     for (const tier of [1, 2, 3]) {
-      status.textContent = `${parsed.project} - ${tierLabels[tier]} 6개 검색 중... (몇십 초 걸릴 수 있어요)`;
+      const tierTarget = Math.round((tier / 3) * 100);
+      const { status: liveStatus } = getActiveControls();
+      liveStatus.textContent = `${parsed.project} - ${tierLabels[tier]} 6개 검색 중... (몇십 초 걸릴 수 있어요)`;
+      creepProgressTowards(tierTarget);
       const res = await fetch("/api/generate-tier", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -293,6 +352,7 @@ async function searchNewProject() {
       if (!res.ok) throw new Error(body.error || `Tier ${tier} 생성에 실패했습니다.`);
       newData.references.push(...body.added);
       body.added.forEach((r) => allNames.push(r.name));
+      setProgress(tierTarget);
 
       // 첫 Tier 결과가 도착하는 순간 결과 화면으로 전환해서 진행 상황이 바로 보이게 한다.
       if (isEmptyStateVisible()) enterResultsView();
@@ -307,6 +367,7 @@ async function searchNewProject() {
     excludedSelection[2].clear();
     excludedSelection[3].clear();
     finishLoad();
+    hideProgress();
 
     const { status: finalStatus } = getActiveControls();
     finalStatus.textContent = `"${parsed.project}" 무드보드 생성 완료 (18개)`;
@@ -315,6 +376,7 @@ async function searchNewProject() {
     console.error(err);
     status.textContent = "오류: " + err.message;
     if (/api[_-]?key/i.test(err.message)) openSettingsModal();
+    hideProgress();
     // 실패했고 아직 결과 화면으로 전환되지 않았다면 빈 상태 그대로 유지한다.
     if (wasEmptyState && !currentData) showEmptyState();
   } finally {

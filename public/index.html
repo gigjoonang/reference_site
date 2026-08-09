@@ -100,15 +100,22 @@
   .chat-hint{font-size:11.5px; color:#9aa0ab; text-align:center;}
   .chat-status{max-width:680px; text-align:center; font-size:12.5px; color:var(--sub); min-height:16px;}
 
-  /* 결과가 나온 뒤 상단에 남는 컴팩트 검색바 */
-  .compact-search-card{max-width:1180px; margin:20px auto 0; padding:0 20px;}
-  .compact-search-box{background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:14px 16px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
-  .compact-search-box input{flex:1 1 320px; border:1px solid var(--border); border-radius:8px; padding:9px 12px; font-size:13.5px; font-family:inherit;}
-  .compact-search-box button{font-size:13px; font-weight:600; padding:9px 16px; border-radius:8px; border:none; background:var(--accent); color:#fff; cursor:pointer;}
-  .compact-search-box button:disabled{opacity:.5; cursor:not-allowed;}
-  .compact-status{max-width:1180px; margin:6px auto 0; padding:0 24px; font-size:12.5px; color:var(--sub);}
+  /* 진행률(%) 표시 */
+  .progress-wrap{display:none; align-items:center; gap:8px; width:100%; max-width:680px; margin:6px auto 0;}
+  .progress-track{flex:1; height:4px; background:var(--border); border-radius:99px; overflow:hidden;}
+  .progress-fill{height:100%; width:0%; background:var(--accent); transition:width .35s ease;}
+  .progress-pct{font-size:11.5px; color:var(--sub); flex-shrink:0; min-width:32px; text-align:right;}
 
-  .wrap{max-width:1180px; margin:0 auto; padding:20px 20px 80px;}
+  /* 결과가 나온 뒤 상단에 남는 컴팩트 검색바 (초기 대화창과 동일한 스타일) */
+  .compact-search-card{max-width:980px; margin:20px auto 0; padding:0 20px;}
+  .compact-search-box{width:100%; background:var(--panel); border:1px solid var(--border); border-radius:22px; padding:10px 10px 10px 22px; display:flex; align-items:center; gap:10px; box-shadow:0 6px 24px rgba(20,20,30,.06);}
+  .compact-search-box input{flex:1; border:none; outline:none; font-size:14.5px; font-family:inherit; background:transparent; color:var(--text); padding:9px 0;}
+  .compact-search-box input::placeholder{color:#9aa0ab;}
+  .compact-search-box button{flex-shrink:0; width:40px; height:40px; border-radius:50%; border:none; background:var(--accent); color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center;}
+  .compact-search-box button:disabled{opacity:.5; cursor:not-allowed;}
+  .compact-status{max-width:980px; margin:6px auto 0; padding:0 24px; font-size:12.5px; color:var(--sub);}
+
+  .wrap{max-width:980px; margin:0 auto; padding:20px 20px 80px;}
   header.top{margin-bottom:24px; text-align:left;}
   header.top p{color:var(--sub); margin:0 0 4px; font-size:14px; max-width:none;}
 
@@ -128,22 +135,21 @@
   .grid{display:grid; grid-template-columns:repeat(3, 1fr); gap:16px;}
   .ref-card{position:relative; background:var(--bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; display:flex; flex-direction:column; text-align:left; transition:opacity .15s;}
   .ref-card.marked{opacity:.45;}
-  .ref-card .thumb{width:100%; aspect-ratio:16/10; object-fit:cover; background:#eceef1; display:block;}
-  .ref-card .thumb-link{display:block; position:relative;}
-  .ref-card .body{padding:14px 16px 16px; background:var(--bg); text-align:left;}
-  .ref-card h3{font-size:14.5px; margin:0 0 8px; color:var(--text); text-align:left;}
+  .ref-card .body{padding:16px; background:var(--bg); text-align:left;}
+  .ref-card-head{display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin:0 0 8px;}
+  .ref-card h3{font-size:14.5px; margin:0; color:var(--text); text-align:left;}
   .ref-card h3 a{color:inherit; text-decoration:none;}
   .ref-card h3 a:hover{text-decoration:underline;}
-  .ref-card .thumb-link:hover .thumb{opacity:.88;}
+  .ref-card .source{font-size:11px; color:var(--sub); margin:0 0 8px;}
   .tags{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:9px; justify-content:flex-start;}
   .tags span{font-size:10.5px; background:var(--accent-light); color:var(--sub); padding:3px 8px; border-radius:6px; border:1px solid var(--border);}
   .ref-card .reason{font-size:12.5px; color:var(--text); opacity:.82; line-height:1.55; margin:0; text-align:left;}
 
-  /* 이번 요청으로 추가된 인터랙션 레이어 (제외 선택 체크박스) */
+  /* 제외 선택 체크박스 (카드 헤더에 인라인으로 배치) */
   .exclude-toggle{
-    position:absolute; top:8px; right:8px; z-index:2;
+    flex-shrink:0;
     display:flex; align-items:center; gap:5px;
-    background:rgba(255,255,255,.92); border:1px solid var(--border); border-radius:99px;
+    background:#fff; border:1px solid var(--border); border-radius:99px;
     padding:4px 10px 4px 8px; font-size:11px; color:var(--text); cursor:pointer; user-select:none;
   }
   .exclude-toggle input{margin:0; cursor:pointer;}
@@ -223,6 +229,10 @@
     <div class="chat-hint">Enter를 누르면 바로 검색돼요</div>
   </div>
   <div class="chat-status" id="searchStatus"></div>
+  <div class="progress-wrap" id="progressWrap1">
+    <div class="progress-track"><div class="progress-fill"></div></div>
+    <span class="progress-pct">0%</span>
+  </div>
 </div>
 
 <!-- 결과 상태: 검색이 끝나면 컴팩트 검색바 + Tier 결과가 나타남 -->
@@ -230,9 +240,15 @@
   <div class="compact-search-card">
     <div class="compact-search-box">
       <input type="text" id="compactInput" placeholder="다른 기업사이트도 찾아보기 (예: 아모레퍼시픽 기업사이트를 찾아줘)">
-      <button id="compactSendBtn" onclick="searchNewProject()">검색</button>
+      <button id="compactSendBtn" onclick="searchNewProject()" aria-label="검색">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="8 7 17 7 17 16"></polyline></svg>
+      </button>
     </div>
     <div class="compact-status" id="compactStatus"></div>
+    <div class="progress-wrap" id="progressWrap2" style="max-width:none;">
+      <div class="progress-track"><div class="progress-fill"></div></div>
+      <span class="progress-pct">0%</span>
+    </div>
   </div>
 
   <div class="wrap">
