@@ -89,7 +89,7 @@
   /* 대화형 랜딩(빈 상태) */
   .empty-state{min-height:62vh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 20px; gap:14px; text-align:center;}
   .chat-shell{width:100%; max-width:680px; display:flex; flex-direction:column; align-items:center; gap:14px;}
-  .chat-box{width:100%; background:var(--panel); border:1px solid var(--border); border-radius:22px; padding:12px 12px 12px 26px; display:flex; align-items:center; gap:12px; box-shadow:0 6px 24px rgba(20,20,30,.06); transition:border-color .15s, box-shadow .15s;}
+  .chat-box{width:100%; background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:12px 12px 12px 26px; display:flex; align-items:center; gap:12px; box-shadow:0 6px 24px rgba(20,20,30,.06); transition:border-color .15s, box-shadow .15s;}
   .chat-box:focus-within{border-color:var(--accent); box-shadow:0 4px 18px rgba(0,0,0,.10);}
   .compact-search-box{transition:border-color .15s, box-shadow .15s;}
   .compact-search-box:focus-within{border-color:var(--accent); box-shadow:0 4px 18px rgba(0,0,0,.10);}
@@ -108,7 +108,7 @@
 
   /* 결과가 나온 뒤 상단에 남는 컴팩트 검색바 (초기 대화창과 동일한 스타일) */
   .compact-search-card{max-width:980px; margin:20px auto 0; padding:0 20px;}
-  .compact-search-box{width:100%; background:var(--panel); border:1px solid var(--border); border-radius:22px; padding:10px 10px 10px 22px; display:flex; align-items:center; gap:10px; box-shadow:0 6px 24px rgba(20,20,30,.06);}
+  .compact-search-box{width:100%; background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:10px 10px 10px 22px; display:flex; align-items:center; gap:10px; box-shadow:0 6px 24px rgba(20,20,30,.06);}
   .compact-search-box input{flex:1; border:none; outline:none; font-size:14.5px; font-family:inherit; background:transparent; color:var(--text); padding:9px 0;}
   .compact-search-box input::placeholder{color:#9aa0ab;}
   .compact-search-box button{flex-shrink:0; width:40px; height:40px; border-radius:50%; border:none; background:var(--accent); color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center;}
@@ -145,12 +145,11 @@
   .tags span{font-size:10.5px; background:var(--accent-light); color:var(--sub); padding:3px 8px; border-radius:6px; border:1px solid var(--border);}
   .ref-card .reason{font-size:12.5px; color:var(--text); opacity:.82; line-height:1.55; margin:0; text-align:left;}
 
-  /* 제외 선택 체크박스 (카드 헤더에 인라인으로 배치) */
+  /* 제외 선택 체크박스 (카드 헤더에 인라인으로 배치, 바깥 박스 없이 체크박스만) */
   .exclude-toggle{
     flex-shrink:0;
     display:flex; align-items:center; gap:5px;
-    background:#fff; border:1px solid var(--border); border-radius:99px;
-    padding:4px 10px 4px 8px; font-size:11px; color:var(--text); cursor:pointer; user-select:none;
+    font-size:11px; color:var(--sub); cursor:pointer; user-select:none;
   }
   .exclude-toggle input{margin:0; cursor:pointer;}
 
