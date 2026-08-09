@@ -21,7 +21,36 @@ const Anthropic = require("@anthropic-ai/sdk");
 const MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-5";
 const DATA_PATH = path.join(__dirname, "..", "data", "moodboard_data_amorepacific.json");
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+// 이 앱은 서버 자체의 API 키를 쓰지 않는다. 방문자가 브라우저에 저장한
+// "자신의" Anthropic API 키를 요청마다 body.apiKey로 보내오고, 서버는
+// 그 키로만 임시 클라이언트를 만들어 그 요청 한 번에만 사용한다(저장하지 않음).
+function buildClient(apiKey) {
+  return new Anthropic({ apiKey });
+}
+
+// 요청 body에서 API 키를 꺼내 형식만 가볍게 검증한다. 없으면 표준화된
+// 에러(code: NO_API_KEY)를 던져서, 프론트가 "설정" 모달을 띄우도록 유도한다.
+function requireApiKey(req) {
+  const apiKey = (req.body && req.body.apiKey ? String(req.body.apiKey) : "").trim();
+  if (!apiKey) {
+    const err = new Error("Anthropic API 키가 필요합니다. 우측 상단 '설정'에서 본인의 API 키를 입력해주세요.");
+    err.code = "NO_API_KEY";
+    err.status = 401;
+    throw err;
+  }
+  return apiKey;
+}
+
+// Anthropic SDK 에러를 사용자에게 보여줄 만한 문구로 다듬는다.
+function friendlyErrorMessage(err) {
+  if (err.code === "NO_API_KEY") return err.message;
+  if (err.status === 401) return "API 키가 유효하지 않습니다. 설정에서 키를 다시 확인해주세요.";
+  if (err.status === 429) return "API 사용량 한도를 초과했습니다(Rate limit). 잠시 후 다시 시도해주세요.";
+  if (err.status === 400 && /credit/i.test(err.message || "")) {
+    return "API 크레딧이 부족합니다. Anthropic 콘솔에서 크레딧을 확인해주세요.";
+  }
+  return err.message || "알 수 없는 오류가 발생했습니다.";
+}
 
 // Anthropic 서버사이드 웹서치 툴 정의. 세 갤러리 도메인으로만 검색을 제한한다.
 // 주의: type 버전 등은 Anthropic API가 업데이트되면 바뀔 수 있다.
@@ -57,7 +86,7 @@ async function readSeedData() {
  * Claude에게 대체 레퍼런스 1개를 찾아달라고 요청한다.
  * variantHint: 같은 요청 안에서 병렬로 여러 개를 찾을 때, 서로 겹치지 않게 유도하는 힌트 문구.
  */
-async function findReplacementReference({ tier, genre, projectName, excludeNames, variantHint }) {
+async function findReplacementReference({ client, tier, genre, projectName, excludeNames, variantHint }) {
   const spec = TIER_SPEC[tier];
   const genreInstruction =
     tier === 3
@@ -92,7 +121,7 @@ ${variantHint || ""}
 
 실제로 web_search로 확인하지 못했으면 절대 지어내지 말고, 대신 "error" 필드에 이유를 담아 { "error": "..." } 형태로만 응답하라.`;
 
-  const response = await anthropic.messages.create({
+  const response = await client.messages.create({
     model: MODEL,
     max_tokens: 2048,
     tools: [WEB_SEARCH_TOOL],
@@ -116,7 +145,7 @@ ${variantHint || ""}
  * 자유 텍스트 요청(예: "아모레퍼시픽 기업사이트를 찾아줘")에서 기업/프로젝트명과
  * 업종(장르)을 추출한다. web_search 없이 빠르게 한 번만 호출한다.
  */
-async function parseProjectQuery(query) {
+async function parseProjectQuery(client, query) {
   const prompt = `사용자가 디자인 레퍼런스 무드보드 도구에 다음과 같이 입력했다: "${query}"
 
 여기서 사용자가 레퍼런스를 찾고 싶어하는 기업/브랜드명과, 그 기업이 속한 업종(장르)을 파악하라.
@@ -128,7 +157,7 @@ async function parseProjectQuery(query) {
   "genre": "업종/장르 (예: 뷰티/코스메틱)"
 }`;
 
-  const response = await anthropic.messages.create({
+  const response = await client.messages.create({
     model: MODEL,
     max_tokens: 300,
     messages: [{ role: "user", content: prompt }],
@@ -150,9 +179,6 @@ app.use(express.static(path.join(__dirname, "..", "public")));
 // 배포에 포함된 시드 데이터 조회 (읽기 전용 - 서버리스에서도 안전)
 app.get("/api/data", async (req, res) => {
   try {
-    if (!process.env.ANTHROPIC_API_KEY) {
-      res.setHeader("X-Api-Key-Missing", "1");
-    }
     const data = await readSeedData();
     res.json(data);
   } catch (err) {
@@ -161,21 +187,21 @@ app.get("/api/data", async (req, res) => {
 });
 
 // 새 레퍼런스를 찾아서 "반환"만 한다 (서버는 아무것도 저장하지 않는다).
-// body: { tier: 1|2|3, count: number, genre: string, project: string, excludeNames: string[] }
+// body: { apiKey: string, tier: 1|2|3, count: number, genre: string, project: string, excludeNames: string[] }
 app.post("/api/research", async (req, res) => {
   try {
+    const apiKey = requireApiKey(req);
     const { tier, count = 1, genre = "", project = "", excludeNames = [] } = req.body;
     if (![1, 2, 3].includes(tier)) {
       return res.status(400).json({ error: "tier는 1, 2, 3 중 하나여야 합니다." });
     }
-    if (!process.env.ANTHROPIC_API_KEY) {
-      return res.status(500).json({ error: "서버에 ANTHROPIC_API_KEY가 설정되어 있지 않습니다." });
-    }
+    const client = buildClient(apiKey);
 
     const added = [];
     const seenNames = [...excludeNames];
     for (let i = 0; i < count; i++) {
       const newRef = await findReplacementReference({
+        client,
         tier,
         genre,
         projectName: project || "프로젝트",
@@ -188,46 +214,45 @@ app.post("/api/research", async (req, res) => {
     res.json({ added });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err.message });
+    res.status(err.status || 500).json({ error: friendlyErrorMessage(err), code: err.code });
   }
 });
 
 // 자유 텍스트("아모레퍼시픽 기업사이트를 찾아줘")에서 기업명/장르를 추출한다.
-// body: { query: string }
+// body: { apiKey: string, query: string }
 app.post("/api/parse-query", async (req, res) => {
   try {
+    const apiKey = requireApiKey(req);
     const { query } = req.body;
     if (!query || !query.trim()) {
       return res.status(400).json({ error: "검색어를 입력해주세요." });
     }
-    if (!process.env.ANTHROPIC_API_KEY) {
-      return res.status(500).json({ error: "서버에 ANTHROPIC_API_KEY가 설정되어 있지 않습니다." });
-    }
-    const parsed = await parseProjectQuery(query.trim());
+    const client = buildClient(apiKey);
+    const parsed = await parseProjectQuery(client, query.trim());
     res.json(parsed);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err.message });
+    res.status(err.status || 500).json({ error: friendlyErrorMessage(err), code: err.code });
   }
 });
 
 // 지정한 Tier 하나에 대해 새 레퍼런스 여러 개를 병렬로 찾아서 반환한다 (서버는 저장하지 않음).
-// body: { project, genre, tier: 1|2|3, count(기본 6), excludeNames: string[] }
+// body: { apiKey: string, project, genre, tier: 1|2|3, count(기본 6), excludeNames: string[] }
 app.post("/api/generate-tier", async (req, res) => {
   try {
+    const apiKey = requireApiKey(req);
     const { project, genre = "", tier, count = 6, excludeNames = [] } = req.body;
     if (!project) return res.status(400).json({ error: "project가 필요합니다." });
     if (![1, 2, 3].includes(tier)) {
       return res.status(400).json({ error: "tier는 1, 2, 3 중 하나여야 합니다." });
     }
-    if (!process.env.ANTHROPIC_API_KEY) {
-      return res.status(500).json({ error: "서버에 ANTHROPIC_API_KEY가 설정되어 있지 않습니다." });
-    }
+    const client = buildClient(apiKey);
 
     // 같은 요청 안의 count개는 서로 다른 후보를 찾도록 병렬로 호출한다.
     // (완전한 중복 방지는 보장되지 않지만, 힌트로 다양성을 유도한다.)
     const calls = Array.from({ length: count }, (_, i) =>
       findReplacementReference({
+        client,
         tier,
         genre,
         projectName: project,
@@ -249,15 +274,16 @@ app.post("/api/generate-tier", async (req, res) => {
     res.json({ added, errors });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err.message });
+    res.status(err.status || 500).json({ error: friendlyErrorMessage(err), code: err.code });
   }
 });
 
 // 1차 컨펌 리뷰 툴: 첨부된 시안 이미지를 Claude Vision에 바로 보내서 피드백을 받는다.
 // (기존의 "프롬프트 생성 -> Claude 대화창에 붙여넣기 -> 응답 복사해오기" 수동 흐름을 대체)
-// body: { images: string[] (data URL), criteriaPrompt: string }
+// body: { apiKey: string, images: string[] (data URL), criteriaPrompt: string }
 app.post("/api/review-feedback", async (req, res) => {
   try {
+    const apiKey = requireApiKey(req);
     const { images = [], criteriaPrompt } = req.body;
     if (!Array.isArray(images) || images.length === 0) {
       return res.status(400).json({ error: "분석할 시안 이미지가 없습니다. 먼저 이미지를 첨부해주세요." });
@@ -265,9 +291,7 @@ app.post("/api/review-feedback", async (req, res) => {
     if (!criteriaPrompt || !criteriaPrompt.trim()) {
       return res.status(400).json({ error: "검토 기준(criteriaPrompt)이 필요합니다." });
     }
-    if (!process.env.ANTHROPIC_API_KEY) {
-      return res.status(500).json({ error: "서버에 ANTHROPIC_API_KEY가 설정되어 있지 않습니다." });
-    }
+    const client = buildClient(apiKey);
 
     const imageBlocks = images.map((dataUrl, i) => {
       const m = /^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/.exec(dataUrl || "");
@@ -275,7 +299,7 @@ app.post("/api/review-feedback", async (req, res) => {
       return { type: "image", source: { type: "base64", media_type: m[1], data: m[2] } };
     });
 
-    const response = await anthropic.messages.create({
+    const response = await client.messages.create({
       model: MODEL,
       max_tokens: 4096,
       messages: [
@@ -297,7 +321,7 @@ app.post("/api/review-feedback", async (req, res) => {
     res.json({ feedback });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err.message });
+    res.status(err.status || 500).json({ error: friendlyErrorMessage(err), code: err.code });
   }
 });
 

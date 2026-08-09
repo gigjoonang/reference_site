@@ -4,6 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title id="page-title-text">디자인 레퍼런스 무드보드</title>
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="AI WORK MXC — 디자인 레퍼런스 무드보드">
+<meta property="og:description" content="Awwwards, CSS Design Awards, GDWEB에서 실시간으로 찾아주는 디자인 레퍼런스 무드보드">
+<meta property="og:url" content="https://reference-site-topaz.vercel.app/index.html">
+<meta property="og:image" content="https://reference-site-topaz.vercel.app/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="600">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://reference-site-topaz.vercel.app/og-image.png">
+
 <style>
   :root{
     --bg:#f6f7f9; --panel:#ffffff; --border:#e3e5e9; --text:#1d1f24; --sub:#6b7280;
@@ -18,13 +29,52 @@
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
     background:var(--bg); color:var(--text); line-height:1.6;
   }
-  .page-title{padding:28px 24px 4px; text-align:center;}
+  .page-title{padding:28px 24px 4px; text-align:center; position:relative;}
   .page-title-logo{height:22px; width:auto; display:inline-block;}
 
   .site-nav{display:flex; justify-content:center; gap:8px; padding:14px 24px 4px; flex-wrap:wrap;}
   .site-nav-tab{font-size:13px; font-weight:600; padding:8px 18px; border-radius:99px; border:1px solid var(--border); color:var(--sub); text-decoration:none; background:#fff; transition:.15s;}
   .site-nav-tab:hover{border-color:var(--accent); color:var(--accent);}
   .site-nav-tab.active{background:var(--accent); color:#fff; border-color:var(--accent);}
+
+  /* 우상단 설정(API 키) 버튼 */
+  .settings-btn{
+    position:absolute; top:24px; right:24px;
+    display:inline-flex; align-items:center; gap:6px;
+    background:#fff; border:1px solid var(--border); border-radius:99px;
+    padding:7px 13px 7px 11px; font-size:12.5px; font-weight:600; color:var(--sub);
+    cursor:pointer; transition:.15s;
+  }
+  .settings-btn:hover{border-color:var(--accent); color:var(--accent);}
+  .settings-btn .dot{width:7px; height:7px; border-radius:50%; background:#d1d5db; flex-shrink:0;}
+  .settings-btn.has-key .dot{background:#22c55e;}
+  @media (max-width:600px){ .settings-btn{position:static; margin:10px auto 0; width:fit-content;} }
+
+  /* 설정 모달 */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(17,24,39,.45); z-index:50;
+    display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .modal-panel{
+    width:100%; max-width:420px; background:#fff; border-radius:14px; padding:26px 24px;
+    box-shadow:0 20px 60px rgba(0,0,0,.25); text-align:left;
+  }
+  .modal-panel h3{margin:0 0 8px; font-size:16px;}
+  .modal-panel .modal-desc{margin:0 0 16px; font-size:12.5px; color:var(--sub); line-height:1.6;}
+  .modal-panel input{
+    width:100%; border:1.5px solid var(--border); border-radius:8px; padding:11px 13px;
+    font-size:13.5px; font-family:inherit; outline:none; transition:border-color .15s, box-shadow .15s;
+  }
+  .modal-panel input:focus{border-color:var(--accent); box-shadow:0 4px 18px rgba(0,0,0,.10);}
+  .modal-actions{display:flex; gap:8px; margin-top:14px;}
+  .modal-actions button{flex:1; font-size:13px; font-weight:600; padding:10px 14px; border-radius:8px; border:1px solid var(--border); cursor:pointer;}
+  .modal-actions .primary{background:var(--accent); color:#fff; border-color:var(--accent);}
+  .modal-actions .secondary{background:#fff; color:var(--sub);}
+  .modal-note{margin:14px 0 0; font-size:11.5px; color:#9aa0ab; line-height:1.6;}
+  .modal-note a{color:var(--sub);}
+  .modal-status{margin:10px 0 0; font-size:12px; min-height:14px;}
+  .modal-status.error{color:#c22;}
+  .modal-status.ok{color:#178a4c;}
 
   /* 대화형 랜딩(빈 상태) */
   .empty-state{min-height:62vh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 20px; gap:14px;}
@@ -117,6 +167,9 @@
 <body>
 
 <header class="page-title">
+  <button type="button" id="settingsBtn" class="settings-btn" onclick="openSettingsModal()">
+    <span class="dot" id="settingsDot"></span>설정
+  </button>
   <img src="logo-mxc.png" alt="AI WORK MXC" class="page-title-logo">
 </header>
 <nav class="site-nav">
@@ -125,7 +178,22 @@
 </nav>
 
 <div id="setup-warning" class="setup-warning">
-  서버에 ANTHROPIC_API_KEY가 설정되어 있지 않은 것 같습니다. .env 파일을 확인하고 서버를 재시작해주세요.
+  이용하려면 먼저 본인의 Anthropic API 키를 등록해야 합니다. 우측 상단 <strong>설정</strong>을 눌러 등록해주세요.
+</div>
+
+<!-- API 키 설정 모달 -->
+<div id="settingsModal" class="modal-overlay" style="display:none;" onclick="if(event.target===this) closeSettingsModal()">
+  <div class="modal-panel">
+    <h3>API 키 설정</h3>
+    <p class="modal-desc">이 도구는 <strong>본인의 Anthropic API 키</strong>로 동작합니다. 키는 이 브라우저에만 저장되고 서버에는 저장되지 않으며, 요청할 때마다 본인 계정의 사용량으로만 청구됩니다.</p>
+    <input type="password" id="apiKeyInput" placeholder="sk-ant-...">
+    <div class="modal-status" id="modalStatus"></div>
+    <div class="modal-actions">
+      <button class="secondary" onclick="clearApiKey()">키 삭제</button>
+      <button class="primary" onclick="saveApiKey()">저장</button>
+    </div>
+    <p class="modal-note">API 키가 없다면 <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>에서 발급받을 수 있습니다.</p>
+  </div>
 </div>
 
 <!-- 빈 상태: 대화창만 노출 -->

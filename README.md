@@ -4,17 +4,23 @@
 
 Vercel 등 서버리스 배포를 고려해 **서버는 상태를 저장하지 않습니다.** 새로 찾은 레퍼런스는 브라우저의 localStorage에만 저장됩니다 (기기/브라우저별로 별도 보관, 새로고침해도 유지).
 
+## API 키는 "방문자 본인의 키"를 씁니다 (중요)
+
+이 앱은 서버(배포한 사람)의 API 키를 쓰지 않습니다. 방문자가 우측 상단 **"설정"** 버튼을 눌러 본인의 Anthropic API 키를 입력해야만 검색/피드백 기능을 쓸 수 있습니다.
+
+- 입력한 키는 그 브라우저의 localStorage에만 저장되고, 요청할 때마다 서버로 함께 전달되어 **그 요청 한 번에만** 사용됩니다. 서버나 DB에 저장되지 않습니다.
+- 키가 없는 방문자는 이용이 막히고(설정 모달이 자동으로 뜸), 배포한 사람(준환님)의 API 사용량은 전혀 소모되지 않습니다.
+- 방문자는 https://console.anthropic.com/settings/keys 에서 본인 키를 발급받을 수 있습니다.
+
 ## 로컬 실행
 
 ```bash
 cd moodboard-app
 npm install
-cp .env.example .env
-# .env 파일을 열어 ANTHROPIC_API_KEY 값을 채워넣으세요
 npm start
 ```
 
-브라우저에서 http://localhost:3000 을 엽니다.
+브라우저에서 http://localhost:3000 을 열고, 우측 상단 "설정"에서 본인의 API 키를 입력하면 바로 쓸 수 있습니다. (`.env`는 이제 선택사항이며 `ANTHROPIC_MODEL`, `PORT` 같은 값에만 씁니다.)
 
 ## Vercel에 배포하고 도메인 연결하기
 
@@ -40,17 +46,12 @@ vercel --prod
 
 또는 CLI 대신 GitHub에 이 폴더를 푸시한 뒤 https://vercel.com/new 에서 "Import Git Repository"로 연결해도 됩니다 (이후 git push마다 자동 배포).
 
-### 3. 환경변수(API 키) 설정
-로컬의 `.env` 파일은 Vercel에 자동으로 올라가지 않습니다. 아래처럼 직접 등록해야 합니다.
+### 3. 환경변수 설정 (선택사항)
+API 키는 이제 서버 환경변수로 등록할 필요가 없습니다 — 방문자가 브라우저에서 직접 입력합니다. `ANTHROPIC_MODEL`처럼 모델을 바꾸고 싶을 때만 선택적으로 등록하면 됩니다:
 ```bash
-vercel env add ANTHROPIC_API_KEY
+vercel env add ANTHROPIC_MODEL
 ```
-프롬프트가 뜨면 API 키 값을 붙여넣고, Production/Preview/Development 중 필요한 환경을 선택합니다. (또는 Vercel 대시보드 → 프로젝트 → Settings → Environment Variables 에서 등록 가능)
-
-환경변수를 추가한 뒤에는 다시 배포해야 반영됩니다:
-```bash
-vercel --prod
-```
+(또는 Vercel 대시보드 → 프로젝트 → Settings → Environment Variables)
 
 ### 4. 커스텀 도메인 등록
 Vercel 대시보드 → 프로젝트 → **Settings → Domains** 에서 진행합니다. 두 가지 경우가 있습니다.
@@ -64,6 +65,26 @@ vercel domains add yourdomain.com
 ```
 
 DNS가 전파되면(보통 몇 분~몇 시간) `https://yourdomain.com` 으로 접속됩니다.
+
+## 최신 업데이트 (1차 컨펌 리뷰: 인앱 AI 피드백)
+
+- "1차 컨펌 리뷰" 탭의 AI 피드백 흐름을 바꿨습니다. 기존에는 "검토 프롬프트 생성 → Claude 대화창에 붙여넣기 → 응답을 복사해서 다시 붙여넣기"였는데, 이제 **"AI 피드백 받기" 버튼 하나만 누르면 이 사이트에서 바로 Claude Vision이 첨부된 시안을 분석**해서 결과를 보여줍니다.
+- 자가 체크리스트와 AI 검토 기준 양쪽에 **"타이포그래피 위계 & 균형감"** 카테고리를 추가했습니다: 제목/본문 등 텍스트 위계, 폰트·자간·줄간격의 일관성, 레이아웃 균형감, 톤앤매너의 시안 전체 통일성을 짚어줍니다.
+- 새로 추가된 API: `POST /api/review-feedback` (이미지 + 검토 기준을 Claude Vision에 전달하고 피드백 텍스트를 받아옴). 전송 전 이미지는 브라우저에서 자동으로 리사이즈(최대 가로 1400px, JPEG 85%)해서 용량을 줄입니다.
+
+**이번에 바뀐 파일**: `public/review.html`, `src/app.js`
+
+### 참고 (이미지 업로드 용량)
+
+- Vercel 서버리스 함수는 요청 본문 크기에 상한이 있습니다(플랜에 따라 다르며 보통 수 MB 수준). 시안 이미지를 아주 여러 장 한 번에 첨부하면 `/api/review-feedback` 요청이 너무 커져 실패할 수 있습니다. 그럴 땐 이미지를 나눠서(2~3장씩) 여러 번 "AI 피드백 받기"를 눌러주세요.
+
+## 최신 업데이트 (로고 교체 + 대화형 검색 UI)
+
+- 로고를 첨부해주신 "AI WORK MXC" 이미지(`public/logo-mxc.png`)로 교체하고 크기를 22px로 살짝 줄였습니다 (두 페이지 공통).
+- "레퍼런스 찾기" 페이지 기본 화면을 카드 그리드 대신 **대화창 하나만** 보이는 랜딩 화면으로 바꿨습니다. 예시 프롬프트 칩을 누르거나 직접 입력 후 Enter를 누르면 검색이 시작되고, 결과가 나오면 그때부터 상단 컴팩트 검색바 + Tier 1·2·3 카드가 나타납니다.
+- 마지막으로 검색한 결과는 브라우저에 저장되어 새로고침해도 유지됩니다. "처음으로" 링크를 누르면 다시 빈 대화창으로 돌아갑니다.
+
+**이번에 바뀌거나 새로 추가된 파일**: `public/index.html`, `public/app.js`, `public/review.html`(로고만 교체), `public/logo-mxc.png`(신규). 기존 `public/logo.png`는 더 이상 쓰이지 않습니다.
 
 ## 이번 업데이트 내용
 
@@ -113,5 +134,12 @@ DNS가 전파되면(보통 몇 분~몇 시간) `https://yourdomain.com` 으로 �
 ## 알아둘 점
 
 - `web_search` 툴 파라미터(`type` 버전 등)는 Anthropic API가 업데이트되면 바뀔 수 있습니다. 에러가 나면 `src/app.js`의 `WEB_SEARCH_TOOL` 상수를 최신 [Claude API 문서](https://docs.claude.com)에 맞게 수정하세요.
-- API 키는 `.env`(로컬) 또는 Vercel 환경변수(배포)에만 두고, 절대 코드에 하드코딩하거나 외부에 공유하지 마세요.
-- 이 앱은 기본적으로 인증이 없습니다. 배포 URL을 아는 누구나 "새로 찾기" 버튼을 눌러 준환님의 API 사용량(비용)을 소모할 수 있으니, 공개 배포 시에는 접근 제한(Vercel Password Protection 등, Pro 플랜 기능)을 고려하세요.
+- 이제 이 앱은 방문자가 본인의 API 키를 우측 상단 "설정"에 입력해야만 쓸 수 있습니다. 준환님의 키를 서버에 등록할 필요가 없고, 배포 URL을 아는 누구가 써도 준환님의 API 사용량(비용)은 소모되지 않습니다.
+
+## 최신 업데이트 (방문자 개인 API 키로 전환)
+
+- 서버가 더 이상 자체 API 키를 쓰지 않습니다. `/api/parse-query`, `/api/generate-tier`, `/api/research`, `/api/review-feedback` 모두 요청 body의 `apiKey`를 받아 그 요청 한 번에만 사용합니다(서버에 저장 안 함). 키가 없으면 401과 함께 `code: "NO_API_KEY"`를 반환합니다.
+- 두 페이지(레퍼런스 찾기 / 1차 컨펌 리뷰) 우측 상단에 **"설정"** 버튼과 API 키 입력 모달을 추가했습니다. 키는 브라우저 localStorage(`user_anthropic_api_key`)에만 저장됩니다. 키가 없는 상태로 검색/피드백을 시도하면 자동으로 모달이 뜹니다.
+- `.env`/Vercel 환경변수의 `ANTHROPIC_API_KEY`는 더 이상 필요 없습니다 (`ANTHROPIC_MODEL`, `PORT`만 선택적으로 사용).
+
+**이번에 바뀐 파일**: `src/app.js`, `public/index.html`, `public/app.js`, `public/review.html`, `server.js`, `.env.example`

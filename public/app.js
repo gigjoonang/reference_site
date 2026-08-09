@@ -6,10 +6,62 @@
 //   마지막 결과 화면이 유지되게 한다.
 
 const LAST_KEY_POINTER = "moodboard_last_key";
+const API_KEY_STORAGE = "user_anthropic_api_key";
 
 let currentData = null;
 let storageKey = null;
 const excludedSelection = { 1: new Set(), 2: new Set(), 3: new Set() };
+
+// ===== 방문자 개인 API 키 관리 (서버에는 저장하지 않고, 이 브라우저에만 보관) =====
+function getApiKey() {
+  return (localStorage.getItem(API_KEY_STORAGE) || "").trim();
+}
+function hasApiKey() {
+  return getApiKey().length > 0;
+}
+function updateSettingsIndicator() {
+  const btn = document.getElementById("settingsBtn");
+  if (btn) btn.classList.toggle("has-key", hasApiKey());
+  const warning = document.getElementById("setup-warning");
+  if (warning) warning.style.display = hasApiKey() ? "none" : "block";
+}
+function openSettingsModal() {
+  const modal = document.getElementById("settingsModal");
+  const input = document.getElementById("apiKeyInput");
+  if (!modal) return;
+  input.value = getApiKey();
+  document.getElementById("modalStatus").textContent = "";
+  document.getElementById("modalStatus").className = "modal-status";
+  modal.style.display = "flex";
+  setTimeout(() => input.focus(), 0);
+}
+function closeSettingsModal() {
+  const modal = document.getElementById("settingsModal");
+  if (modal) modal.style.display = "none";
+}
+function saveApiKey() {
+  const input = document.getElementById("apiKeyInput");
+  const status = document.getElementById("modalStatus");
+  const value = (input.value || "").trim();
+  if (!value) {
+    status.textContent = "API 키를 입력해주세요.";
+    status.className = "modal-status error";
+    return;
+  }
+  localStorage.setItem(API_KEY_STORAGE, value);
+  updateSettingsIndicator();
+  status.textContent = "저장되었습니다.";
+  status.className = "modal-status ok";
+  setTimeout(closeSettingsModal, 500);
+}
+function clearApiKey() {
+  localStorage.removeItem(API_KEY_STORAGE);
+  document.getElementById("apiKeyInput").value = "";
+  updateSettingsIndicator();
+  const status = document.getElementById("modalStatus");
+  status.textContent = "키를 삭제했습니다.";
+  status.className = "modal-status ok";
+}
 
 function storageKeyFor(project) {
   return "moodboard_state_" + (project || "default").replace(/\s+/g, "_");
@@ -151,6 +203,11 @@ async function requestNewReferences(tier) {
   const names = Array.from(excludedSelection[tier]);
   if (names.length === 0) return;
 
+  if (!hasApiKey()) {
+    openSettingsModal();
+    return;
+  }
+
   const btn = document.getElementById(`btn-${tier}`);
   const statusEl = document.getElementById(`status-${tier}`);
   btn.disabled = true;
@@ -166,6 +223,7 @@ async function requestNewReferences(tier) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        apiKey: getApiKey(),
         tier,
         count: names.length,
         genre: currentData.genre,
@@ -179,15 +237,12 @@ async function requestNewReferences(tier) {
     currentData.references.push(...body.added);
     saveToLocalStorage();
     excludedSelection[tier].clear();
-    document.getElementById("setup-warning").style.display = "none";
     render();
     statusEl.textContent = `${body.added.length}개 교체 완료`;
   } catch (err) {
     console.error(err);
     statusEl.textContent = "오류: " + err.message;
-    if (/api[_-]?key/i.test(err.message)) {
-      document.getElementById("setup-warning").style.display = "block";
-    }
+    if (/api[_-]?key/i.test(err.message)) openSettingsModal();
     btn.disabled = false;
   }
 }
@@ -198,6 +253,12 @@ async function searchNewProject() {
   const query = (input.value || "").trim();
   if (!query) { input.focus(); return; }
 
+  if (!hasApiKey()) {
+    openSettingsModal();
+    status.textContent = "먼저 우측 상단 '설정'에서 본인의 API 키를 등록해주세요.";
+    return;
+  }
+
   const wasEmptyState = isEmptyStateVisible();
   button.disabled = true;
   input.disabled = true;
@@ -207,7 +268,7 @@ async function searchNewProject() {
     const parseRes = await fetch("/api/parse-query", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query }),
+      body: JSON.stringify({ apiKey: getApiKey(), query }),
     });
     const parsed = await parseRes.json();
     if (!parseRes.ok) throw new Error(parsed.error || "요청을 이해하지 못했습니다.");
@@ -222,6 +283,7 @@ async function searchNewProject() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          apiKey: getApiKey(),
           project: parsed.project,
           genre: parsed.genre,
           tier,
@@ -247,7 +309,6 @@ async function searchNewProject() {
     excludedSelection[2].clear();
     excludedSelection[3].clear();
     finishLoad();
-    document.getElementById("setup-warning").style.display = "none";
 
     const { status: finalStatus } = getActiveControls();
     finalStatus.textContent = `"${parsed.project}" 무드보드 생성 완료 (18개)`;
@@ -255,9 +316,7 @@ async function searchNewProject() {
   } catch (err) {
     console.error(err);
     status.textContent = "오류: " + err.message;
-    if (/api[_-]?key/i.test(err.message)) {
-      document.getElementById("setup-warning").style.display = "block";
-    }
+    if (/api[_-]?key/i.test(err.message)) openSettingsModal();
     // 실패했고 아직 결과 화면으로 전환되지 않았다면 빈 상태 그대로 유지한다.
     if (wasEmptyState && !currentData) showEmptyState();
   } finally {
@@ -281,6 +340,10 @@ function escapeJs(str) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  updateSettingsIndicator();
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeSettingsModal();
+  });
   const chatInput = document.getElementById("chatInput");
   if (chatInput) {
     chatInput.addEventListener("keydown", (e) => {
