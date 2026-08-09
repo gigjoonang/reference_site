@@ -1,0 +1,306 @@
+{
+  "project": "아모레퍼시픽 신규 기업사이트",
+  "genre": "뷰티/코스메틱",
+  "references": [
+    {
+      "name": "태광그룹",
+      "source": "GDWEB",
+      "url": "https://www.taekwanggroup.co.kr/",
+      "image": "https://www.gdweb.co.kr/sub/filedata.asp?str_no=24340&sgbn=1",
+      "tier": 1,
+      "tags": ["미니멀", "그리드", "안정적", "모던톤"],
+      "reason": "GDWEB GOLD PRIZE(WINNER보다 상위 등급) 수상작. 디자인 컨셉 태그가 심플한/모던한/깔끔한/신뢰적인으로 확인되어 대기업 지주사 사이트의 정석적인 레이아웃을 보여준다.",
+      "status": "excluded"
+    },
+    {
+      "name": "한국전광",
+      "source": "GDWEB",
+      "url": "https://keoc.kr/",
+      "image": "https://www.gdweb.co.kr/sub/filedata.asp?str_no=27304&sgbn=1",
+      "tier": 1,
+      "tags": ["심플", "모던", "그리드", "제조업"],
+      "reason": "GDWEB WINNER PRIZE(2026.07 등재, 선정증서 202607200003). 디자인 컨셉 심플한/안정적/모던한/깔끔한으로 확인되는 전기·전자 제조업 기업사이트.",
+      "status": "excluded"
+    },
+    {
+      "name": "Alexium International",
+      "source": "Awwwards",
+      "url": "https://alexiuminternational.com",
+      "image": "https://assets.awwwards.com/awards/submissions/2026/07/6a57d6a2db987863011154.png",
+      "tier": 1,
+      "tags": ["미니멀", "타이포그래피중심", "클린", "그리드"],
+      "reason": "Awwwards Business&Corporate/Technology/Clean/Minimal 태그. 커뮤니티 투표 15건 평균 약 7.0점으로 확인. 화학소재 기업(뷰티 업종 아님)이지만 절제된 타이포와 클린한 정보구조가 참고할 만하다.",
+      "status": "excluded"
+    },
+    {
+      "name": "Stone Center",
+      "source": "Awwwards",
+      "url": "https://stonecenters.com/",
+      "image": "https://assets.awwwards.com/awards/submissions/2026/07/6a6b0363b4592404379222.png",
+      "tier": 1,
+      "tags": ["그리드", "제품카탈로그", "데이터시각화", "갤러리"],
+      "reason": "Awwwards Business&Corporate 태그, 커뮤니티 투표 5건 평균 약 7.3점 확인. 석재 유통·가공업체(뷰티 업종 아님)로, 제품 카탈로그·프로젝트 갤러리·계산기 등 다구성 정보구조가 안전한 B2B 기업사이트의 예시.",
+      "status": "excluded"
+    },
+    {
+      "name": "신한금융그룹",
+      "source": "GDWEB",
+      "url": "https://shinhangroup.com/",
+      "image": "https://www.gdweb.co.kr/sub/filedata.asp?str_no=22786&sgbn=1",
+      "tier": 1,
+      "tags": ["안정적", "블루톤", "그리드", "대기업"],
+      "reason": "GDWEB WINNER PRIZE. 금융지주 그룹사(뷰티 업종 아님) 사이트로 역동적 컨셉 태그가 있으나 전체적으로 정보구조가 정돈된 대기업 표준형 레이아웃.",
+      "status": "excluded"
+    },
+    {
+      "name": "삼천리",
+      "source": "GDWEB",
+      "url": "https://www.samchully.co.kr/",
+      "image": "https://www.gdweb.co.kr/sub/filedata.asp?str_no=26317&sgbn=1",
+      "tier": 1,
+      "tags": ["안정적", "블루/화이트톤", "영상히어로", "그리드"],
+      "reason": "GDWEB WINNER PRIZE(2025.12.31 등재). 디자인 컨셉 태그가 '안정적' 하나로만 확인될 만큼 절제된 에너지기업(뷰티 업종 아님) 사이트로 Tier1 성격에 부합.",
+      "status": "excluded"
+    },
+    {
+      "name": "풀무원",
+      "source": "GDWEB",
+      "url": "https://www.pulmuone.co.kr/pulmuone/main/Index.do",
+      "image": "https://www.gdweb.co.kr/sub/filedata.asp?str_no=26443&sgbn=1",
+      "tier": 2,
+      "tags": ["컬러풀", "독특한레이아웃", "인물사진", "역동적"],
+      "reason": "GDWEB WINNER PRIZE(2026.01). 식품기업(뷰티 업종 아님)이지만 디자인 컨셉 태그가 역동적/재미있는/화려한/독특한 레이아웃으로 확인되어 트렌디하면서도 정돈된 대기업 사례.",
+      "status": "excluded"
+    },
+    {
+      "name": "한빛산업",
+      "source": "GDWEB",
+      "url": "https://hanvit-ind.com/",
+      "image": "https://www.gdweb.co.kr/sub/filedata.asp?str_no=27289&sgbn=1",
+      "tier": 2,
+      "tags": ["3D", "그래픽디자인", "첨단적", "그리드"],
+      "reason": "GDWEB WINNER PRIZE(2026.07.16 등재). 표현방법에 3D가 포함되고 컨셉이 첨단적인/실험적인으로 확인되는 산업재 제조업체(뷰티 업종 아님) 사이트.",
+      "status": "excluded"
+    },
+    {
+      "name": "핀사이트랩스",
+      "source": "GDWEB",
+      "url": "https://www.finsightlabs.co.kr",
+      "image": "https://www.gdweb.co.kr/sub/filedata.asp?str_no=26908&sgbn=1",
+      "tier": 2,
+      "tags": ["고급스러운톤", "모던", "타이포그래피", "다크톤"],
+      "reason": "GDWEB WINNER PRIZE(2026.04). 핀테크 기업(뷰티 업종 아님) 사이트로 컨셉 태그가 고급스러운/신비적인/실험적인/모던한/깔끔한으로 확인되어 정돈된 트렌디함의 예시.",
+      "status": "excluded"
+    },
+    {
+      "name": "United Carriers",
+      "source": "Awwwards",
+      "url": "https://unitedcarriers.com/",
+      "image": "https://assets.awwwards.com/awards/submissions/2026/07/6a5e018f2b85e594354056.png",
+      "tier": 2,
+      "tags": ["3D히어로", "스크롤내러티브", "모션전환", "멀티섹션"],
+      "reason": "Awwwards Business&Corporate/3D/Storytelling 태그. 커뮤니티 투표 15건 평균 약 8.9점으로 매우 높게 확인. 물류·화물운송기업(뷰티 업종 아님)이지만 서비스/산업/소개 페이지가 갖춰진 멀티섹션 구조에 3D 히어로와 스토리텔링을 결합한 정돈된 트렌디 사례.",
+      "status": "excluded"
+    },
+    {
+      "name": "Seasats",
+      "source": "Awwwards",
+      "url": "https://www.seasats.com/",
+      "image": "https://assets.awwwards.com/awards/submissions/2026/07/6a63c727aeb73911653226.jpg",
+      "tier": 2,
+      "tags": ["3D(Cinema4D)", "클린", "인터랙티브내비게이션", "케이스스터디"],
+      "reason": "Awwwards Business&Corporate/Institutions/Clean/3D 태그. 커뮤니티 투표 4건 평균 약 8.1점 확인. 해양로봇 기술기업(뷰티 업종 아님)으로 제품·케이스스터디 페이지 구성이 갖춰진 정돈된 3D 활용 사례.",
+      "status": "excluded"
+    },
+    {
+      "name": "아이콘플래닝",
+      "source": "GDWEB",
+      "url": "https://iconplanning.com/",
+      "image": "https://www.gdweb.co.kr/sub/filedata.asp?str_no=26811&sgbn=1",
+      "tier": 2,
+      "tags": ["고급스러운", "인물/건물이미지", "역동적", "신뢰적"],
+      "reason": "GDWEB WINNER PRIZE(2026.04). 컨셉 태그 고급스러운/역동적인/실험적인/신뢰적인으로 확인되는 기업(B2B) 대상 사이트로 트렌디하되 정돈된 톤.",
+      "status": "excluded"
+    },
+    {
+      "name": "코리아나 화장품",
+      "source": "GDWEB",
+      "url": "https://www.gdweb.co.kr/sub/view.asp?Txt_fgbn=5&str_no=19728",
+      "image": "http://www.gdweb.co.kr/admincenter/files/web/2023/20232023062863554350386803.jpg",
+      "tier": 1,
+      "tags": ["모던한", "깔끔한", "신뢰적인", "그래픽디자인중심"],
+      "reason": "GDWEB WINNER PRIZE 수상. 국내 상장 화장품 제조사의 정석적인 기업사이트로, 아모레퍼시픽과 동일 업종.",
+      "status": "active"
+    },
+    {
+      "name": "오휘(OHUI)",
+      "source": "GDWEB",
+      "url": "https://www.gdweb.co.kr/sub/view.asp?Txt_fgbn=5&str_no=20819",
+      "image": "http://www.gdweb.co.kr/admincenter/files/web/2023/20232023112739188970198372.jpg",
+      "tier": 1,
+      "tags": ["고급스러운", "신비적인", "안정적", "모던한"],
+      "reason": "GDWEB BRONZE PRIZE 수상. 아모레퍼시픽 자사 프리미엄 스킨케어 브랜드로, 장르 일치도가 가장 높은 레퍼런스.",
+      "status": "active"
+    },
+    {
+      "name": "토니모리",
+      "source": "GDWEB",
+      "url": "https://www.gdweb.co.kr/sub/view.asp?Txt_fgbn=5&str_no=24082",
+      "image": "http://www.gdweb.co.kr/admincenter/files/web/2025/20252025021164375710828102.jpg",
+      "tier": 1,
+      "tags": ["안정적", "화이트톤", "콘텐츠중심"],
+      "reason": "GDWEB BRONZE PRIZE(2025.02) 수상. 코스메틱 브랜드의 예측 가능한 정보구조를 보여주는 안전한 레퍼런스.",
+      "status": "active"
+    },
+    {
+      "name": "닥터지 공식 온라인 쇼핑몰",
+      "source": "GDWEB",
+      "url": "https://www.gdweb.co.kr/sub/view.asp?Txt_fgbn=5&str_no=16737",
+      "image": "http://www.gdweb.co.kr/admincenter/files/web/2022/20222022041258094750393822.jpg",
+      "tier": 1,
+      "tags": ["심플한", "모던한", "깔끔한", "신뢰적인"],
+      "reason": "GDWEB WINNER PRIZE 수상. 더마 코스메틱 브랜드의 콘텐츠 밀도 있는 표준 이커머스형 사이트.",
+      "status": "active"
+    },
+    {
+      "name": "SKIN1004",
+      "source": "GDWEB",
+      "url": "https://www.gdweb.co.kr/sub/view.asp?Txt_fgbn=5&str_no=25055",
+      "image": "http://www.gdweb.co.kr/admincenter/files/web/2025/20252025061838831440051613.jpg",
+      "tier": 1,
+      "tags": ["고급스러운", "신비적인", "깔끔한", "제품중심"],
+      "reason": "GDWEB WINNER PRIZE(2025.06) 수상. 글로벌 K-뷰티 브랜드의 정돈된 공식 사이트로 성분·제품 스토리텔링이 돋보인다.",
+      "status": "active"
+    },
+    {
+      "name": "입생로랑 뷰티 (YSL Beauty Korea)",
+      "source": "GDWEB",
+      "url": "https://www.gdweb.co.kr/sub/view.asp?Txt_fgbn=5&str_no=13073",
+      "image": "http://www.gdweb.co.kr/admincenter/files/web/2020/20202020061261946980381951.jpg",
+      "tier": 1,
+      "tags": ["강렬한", "레드톤", "인물중심"],
+      "reason": "GDWEB WINNER PRIZE 수상. 글로벌 럭셔리 뷰티 브랜드의 코리아 공식 사이트로 안전하면서도 브랜드 톤이 강한 레이아웃.",
+      "status": "active"
+    },
+    {
+      "name": "OMR Beauty",
+      "source": "Awwwards",
+      "url": "https://www.awwwards.com/sites/omr-beauty",
+      "image": "https://assets.awwwards.com/awards/submissions/2026/01/69712696394f3947153995.jpg",
+      "tier": 2,
+      "tags": ["클린타이포", "제품그리드", "이커머스"],
+      "reason": "Awwwards Honorable Mention(2026.02), 커뮤니티 평균 8.00/10 확인. 레거시 스택에서 Shopify Plus로 리플랫폼한 뷰티 브랜드의 정돈된 그리드형 이커머스.",
+      "status": "active"
+    },
+    {
+      "name": "Beauty Queen Digital Flagship Store",
+      "source": "Awwwards",
+      "url": "https://www.awwwards.com/sites/beauty-queen-digital-flagship-store",
+      "image": "https://assets.awwwards.com/awards/submissions/2026/01/697c5e9e31bd1878238821.png",
+      "tier": 2,
+      "tags": ["에디토리얼", "블랙앤화이트", "수평메뉴"],
+      "reason": "Awwwards Honorable Mention(2026.01), 커뮤니티 평균 약 7.4/10 확인. 밀라노 감성의 뷰티 플래그십 스토어로 화보형 비주얼과 정돈된 이커머스 구조를 결합.",
+      "status": "active"
+    },
+    {
+      "name": "Cromia",
+      "source": "CSS Design Awards",
+      "url": "https://www.cssdesignawards.com/sites/cromia/42981/",
+      "image": "https://www.cssdesignawards.com/cdasites/2023/202302/20230217165156.jpg",
+      "tier": 2,
+      "tags": ["타이포그래피중심", "내추럴뷰티", "반응형"],
+      "reason": "CSSDA Special Kudos(2023.02), 심사위원 최종점수 7.82/10 확인. 내추럴 뷰티 브랜드의 정돈된 타이포그래피 레이아웃.",
+      "status": "active"
+    },
+    {
+      "name": "Truekind Skincare",
+      "source": "CSS Design Awards",
+      "url": "https://www.cssdesignawards.com/sites/truekind-skincare/47538",
+      "image": "https://www.cssdesignawards.com/cdasites/2025/202505/20250519165816.jpg",
+      "tier": 2,
+      "tags": ["컬러풀", "패럴랙스", "이커머스"],
+      "reason": "CSSDA Website of the Day(2025.06.03), 심사위원 최종점수 8.22/10 확인. 스킨케어 브랜드로 컬러풀하면서도 구조화된 프로덕트 스토리텔링을 보여준다.",
+      "status": "active"
+    },
+    {
+      "name": "Juvia's Place",
+      "source": "CSS Design Awards",
+      "url": "https://www.cssdesignawards.com/sites/juvias-place/38914/",
+      "image": "https://www.cssdesignawards.com/cdasites/2021/202104/20210405200521.jpg",
+      "tier": 2,
+      "tags": ["컬러풀", "반응형", "브랜드스토리텔링"],
+      "reason": "CSSDA Special Kudos(2021.04), 심사위원 최종점수 7.08/10 확인. 메이크업 브랜드의 화려하지만 구조화된 이커머스 사례.",
+      "status": "active"
+    },
+    {
+      "name": "Essentiality of Beauty (L'Oréal)",
+      "source": "Awwwards",
+      "url": "https://www.awwwards.com/sites/essentiality-of-beauty",
+      "image": "https://assets.awwwards.com/awards/submissions/2025/09/68bedb53335ae268345613.jpg",
+      "tier": 2,
+      "tags": ["수평레이아웃", "갤러리", "마이크로인터랙션"],
+      "reason": "Awwwards Honorable Mention(2025.09), 커뮤니티 평균 약 7.16/10 확인. L'Oréal의 브랜드 철학 스토리텔링 사이트로 갤러리·수평 내비게이션 구조가 정돈되어 있다.",
+      "status": "active"
+    },
+    {
+      "name": "나니아랩스",
+      "source": "GDWEB",
+      "url": "https://narnia.ai/",
+      "image": "https://www.gdweb.co.kr/sub/filedata.asp?str_no=27158&sgbn=1",
+      "tier": 3,
+      "tags": ["3D", "다크톤", "역동적", "실험적"],
+      "reason": "GDWEB WINNER PRIZE(2026.06.23 등재). AI 기업(뷰티 업종 아님) 사이트로 표현방법 3D, 컨셉 역동적인/첨단적인/실험적인이 확인되는 과감한 인터랙션 사례.",
+      "status": "active"
+    },
+    {
+      "name": "BotBlox Systems",
+      "source": "Awwwards",
+      "url": "https://botblox.com/",
+      "image": "https://assets.awwwards.com/awards/submissions/2026/07/6a5fa9b279abd807326981.png",
+      "tier": 3,
+      "tags": ["3D(Three.js/Blender)", "데이터시각화", "스크롤내러티브", "다크톤"],
+      "reason": "Awwwards Business&Corporate/Technology/3D/Data Visualization/Storytelling 태그로 확인. 네트워킹 하드웨어 기업(뷰티 업종 아님)의 무형 인프라를 3D로 시각화한 실험적 인터랙션 사례.",
+      "status": "active"
+    },
+    {
+      "name": "Xray Concept by PathTech (VinFast X-Ray)",
+      "source": "Awwwards",
+      "url": "https://vf-poc.pathtech.net/",
+      "image": "https://assets.awwwards.com/awards/submissions/2026/07/6a607cbdec630318679850.png",
+      "tier": 3,
+      "tags": ["3D(Three.js)", "스토리텔링", "몰입형", "자동차"],
+      "reason": "Awwwards Art&Illustration/Business&Corporate/360/3D/Three.js/Storytelling 태그. 커뮤니티 투표 4건 평균 약 7.9점 확인. 자동차 기업(뷰티 업종 아님)의 제품 내부를 3D로 탐험하는 몰입형 경험.",
+      "status": "active"
+    },
+    {
+      "name": "Jesko Jets",
+      "source": "CSS Design Awards",
+      "url": "https://jeskojets.com",
+      "image": "https://www.cssdesignawards.com/cdasites/2026/202606/20260629160658.jpg",
+      "tier": 3,
+      "tags": ["WebGL", "원페이지", "패럴랙스", "럭셔리"],
+      "reason": "CSSDA Website Of The Day(2026.07.22) 수상, 심사위원 최종점수 8.16으로 확인. 프라이빗 제트 차터 기업(뷰티 업종 아님) 사이트로 WebGL·패럴랙스를 활용한 과감한 원페이지 인터랙션.",
+      "status": "active"
+    },
+    {
+      "name": "Cipher",
+      "source": "CSS Design Awards",
+      "url": "https://cipher.tv/",
+      "image": "https://www.cssdesignawards.com/cdasites/2026/202606/20260629094708.jpg",
+      "tier": 3,
+      "tags": ["WebGL", "모션그래픽", "머티리얼디자인", "다크톤"],
+      "reason": "CSSDA Website Of The Day(2026.07.23) 수상, 심사위원 최종점수 8.15로 확인. 크리에이티브 프로덕션 기업(뷰티 업종 아님) 사이트로 WebGL 기반의 실험적 모션 인터랙션.",
+      "status": "active"
+    },
+    {
+      "name": "homunculus Inc. 2026",
+      "source": "CSS Design Awards",
+      "url": "https://homunculus.jp/",
+      "image": "https://www.cssdesignawards.com/cdasites/2026/202607/20260706094351.jpg",
+      "tier": 3,
+      "tags": ["WebGL", "원페이지", "영상", "실험적"],
+      "reason": "CSSDA Website Of The Day(2026.07.30) 수상, 심사위원 최종점수 8.14로 확인. 일본 크리에이티브 디지털 프로덕션의 신규 기업사이트로, 자체 설명에도 'corporate site'로 명시된 WebGL 기반 실험적 사례.",
+      "status": "active"
+    }
+  ]
+}

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="page-title-text">디자인 레퍼런스 무드보드</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --panel:#ffffff; --border:#e3e5e9; --text:#1d1f24; --sub:#6b7280;
+    --accent:#111827; --accent-light:#f3f4f6;
+    --good:#FF00D4; --good-light:#ffe3f9;
+    --warn:#790BE0; --warn-light:#f0e3fc;
+    --bad:#0B2BE0; --bad-light:#e3e8fc;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+    background:var(--bg); color:var(--text); line-height:1.6;
+  }
+  .page-title{padding:28px 24px 4px; text-align:center;}
+  .page-title-logo{height:19px; width:auto; display:inline-block;}
+
+  .wrap{max-width:1180px; margin:0 auto; padding:20px 20px 80px;}
+  header.top{margin-bottom:24px; text-align:left;}
+  header.top p{color:var(--sub); margin:0 0 4px; font-size:14px; max-width:none;}
+
+  .card{background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:22px; margin-bottom:20px; text-align:left;}
+  .card h2{font-size:16px; margin:0 0 4px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; text-align:left;}
+  .card h2 .num{display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:50%; color:#fff; font-size:12px; font-weight:700; flex-shrink:0;}
+  .card .desc{color:var(--sub); font-size:12.5px; margin:2px 0 12px; text-align:left;}
+  .card .desc .tier-tag{font-size:11px; font-weight:600; padding:2px 9px; border-radius:99px; margin-left:8px;}
+
+  .tier1 h2 .num{background:var(--good);}
+  .tier1 .desc .tier-tag{background:var(--good-light); color:var(--good);}
+  .tier2 h2 .num{background:var(--warn);}
+  .tier2 .desc .tier-tag{background:var(--warn-light); color:var(--warn);}
+  .tier3 h2 .num{background:var(--bad);}
+  .tier3 .desc .tier-tag{background:var(--bad-light); color:var(--bad);}
+
+  .grid{display:grid; grid-template-columns:repeat(3, 1fr); gap:16px;}
+  .ref-card{position:relative; background:var(--bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; display:flex; flex-direction:column; text-align:left; transition:opacity .15s;}
+  .ref-card.marked{opacity:.45;}
+  .ref-card .thumb{width:100%; aspect-ratio:16/10; object-fit:cover; background:#eceef1; display:block;}
+  .ref-card .thumb-link{display:block; position:relative;}
+  .ref-card .body{padding:14px 16px 16px; background:var(--bg); text-align:left;}
+  .ref-card h3{font-size:14.5px; margin:0 0 8px; color:var(--text); text-align:left;}
+  .ref-card h3 a{color:inherit; text-decoration:none;}
+  .ref-card h3 a:hover{text-decoration:underline;}
+  .ref-card .thumb-link:hover .thumb{opacity:.88;}
+  .tags{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:9px; justify-content:flex-start;}
+  .tags span{font-size:10.5px; background:var(--accent-light); color:var(--sub); padding:3px 8px; border-radius:6px; border:1px solid var(--border);}
+  .ref-card .reason{font-size:12.5px; color:var(--text); opacity:.82; line-height:1.55; margin:0; text-align:left;}
+
+  /* 이번 요청으로 추가된 인터랙션 레이어 (제외 선택 체크박스) */
+  .exclude-toggle{
+    position:absolute; top:8px; right:8px; z-index:2;
+    display:flex; align-items:center; gap:5px;
+    background:rgba(255,255,255,.92); border:1px solid var(--border); border-radius:99px;
+    padding:4px 10px 4px 8px; font-size:11px; color:var(--text); cursor:pointer; user-select:none;
+  }
+  .exclude-toggle input{margin:0; cursor:pointer;}
+
+  .tier-actions{display:flex; align-items:center; gap:10px; margin:14px 0 4px;}
+  .tier-actions button{
+    font-size:12.5px; font-weight:600; padding:8px 14px; border-radius:8px; border:1px solid var(--border);
+    background:var(--accent); color:#fff; cursor:pointer;
+  }
+  .tier-actions button:disabled{opacity:.5; cursor:not-allowed;}
+  .tier-actions .status{font-size:12px; color:var(--sub);}
+
+  .overall-text{font-size:13.5px; line-height:1.75; color:var(--text); background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:14px 16px; margin-top:6px; text-align:left;}
+  .overall-text p{margin:0 0 10px;}
+  .overall-text p:last-child{margin-bottom:0;}
+
+  footer{text-align:left; color:var(--sub); font-size:12px; margin-top:24px;}
+
+  .setup-warning{
+    max-width:1180px; margin:16px auto 0; padding:12px 16px; border-radius:8px;
+    background:#fff4e5; border:1px solid #f3c98a; color:#7a4b06; font-size:13px; display:none;
+  }
+
+  @media (max-width:900px){ .grid{grid-template-columns:repeat(2, 1fr);} }
+  @media (max-width:600px){
+    .grid{grid-template-columns:1fr;}
+    .card h2{flex-direction:column; align-items:flex-start; gap:4px;}
+  }
+</style>
+</head>
+<body>
+
+<header class="page-title">
+  <!-- 로고 이미지 미정 (rlogo.png 확보 후 <img src="rlogo.png" class="page-title-logo"> 형태로 추가 예정) -->
+</header>
+
+<div id="setup-warning" class="setup-warning">
+  서버에 ANTHROPIC_API_KEY가 설정되어 있지 않은 것 같습니다. .env 파일을 확인하고 서버를 재시작해주세요.
+</div>
+
+<div class="wrap">
+  <header class="top">
+    <p>Awwwards / CSS Design Awards / GDWEB 세 곳에서만, 실제 반응도·인기도를 확인해 고른 레퍼런스입니다. 카드 오른쪽 위 체크박스로 제외할 항목을 표시한 뒤, 각 Tier 하단의 버튼을 누르면 Claude API가 같은 개수만큼 새 레퍼런스를 실시간으로 찾아 채워 넣습니다.</p>
+  </header>
+
+  <section class="card tier1">
+    <h2><span class="num">1</span>Tier 1 — 평범한 레이아웃</h2>
+    <p class="desc">안전하고 정석적인 기업 사이트<span class="tier-tag">리스크 낮음</span></p>
+    <div class="grid" id="grid-1"></div>
+    <div class="tier-actions">
+      <button id="btn-1" onclick="requestNewReferences(1)">선택 항목 제외하고 새로 찾기</button>
+      <span class="status" id="status-1"></span>
+    </div>
+  </section>
+
+  <section class="card tier2">
+    <h2><span class="num">2</span>Tier 2 — 트렌디하지만 정돈된 레이아웃</h2>
+    <p class="desc">최신 톤을 따르되 구조는 명확<span class="tier-tag">리스크 중간</span></p>
+    <div class="grid" id="grid-2"></div>
+    <div class="tier-actions">
+      <button id="btn-2" onclick="requestNewReferences(2)">선택 항목 제외하고 새로 찾기</button>
+      <span class="status" id="status-2"></span>
+    </div>
+  </section>
+
+  <section class="card tier3">
+    <h2><span class="num">3</span>Tier 3 — 매우 트렌디하면서 과감한 인터랙션</h2>
+    <p class="desc">WebGL/3D/실험적 구조 중심 · 고득점 위주<span class="tier-tag">리스크 높음</span></p>
+    <div class="grid" id="grid-3"></div>
+    <div class="tier-actions">
+      <button id="btn-3" onclick="requestNewReferences(3)">선택 항목 제외하고 새로 찾기</button>
+      <span class="status" id="status-3"></span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2><span class="num" style="background:var(--accent);">✓</span>안내</h2>
+    <div class="overall-text">
+      <p>이 페이지는 정적 무드보드 문서를 Claude API와 연동해 실시간으로 갱신할 수 있게 만든 버전입니다. 체크박스로 제외할 카드를 고르고 버튼을 누르면, 서버가 Claude의 web_search 툴로 Awwwards/CSSDA/GDWEB을 다시 검색해 같은 개수만큼 새 레퍼런스로 교체합니다. 응답은 실제 API 호출 결과이므로 몇 초~몇십 초 걸릴 수 있습니다.</p>
+    </div>
+  </section>
+
+  <footer id="footer-text"></footer>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
